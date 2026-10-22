@@ -2,11 +2,11 @@
 
 ## 1. 推送到 GitHub
 
-在 GitHub 网页上新建一个**空仓库**（例如 `stellar-lanes`），不要勾选添加 README、.gitignore 或 License（本地已经有了）。然后在本地：
+在 GitHub 网页上新建一个**空仓库**（这里是 `vela`），不要勾选添加 README、.gitignore 或 License（本地已经有了）。然后在本地：
 
 ```bash
-cd ~/project/stellar-lanes
-git remote add origin https://github.com/silchenn/stellar-lanes.git
+cd ~/project/vela
+git remote add origin https://github.com/silchenn/vela.git
 git push -u origin main
 ```
 
@@ -22,7 +22,7 @@ git push -u origin main
 4. 运行成功后，演示地址是：
 
    ```
-   https://silchenn.github.io/stellar-lanes/
+   https://silchenn.github.io/vela/
    ```
 
 5. README 的「在线体验」链接已经指向这个地址；再把它填到仓库首页右侧 **About → Website**。

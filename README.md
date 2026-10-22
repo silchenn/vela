@@ -1,4 +1,4 @@
-# 星际航道 · Stellar Lanes
+# Vela
 
 > 可视化的家庭网络入侵检测系统 —— 把网络流量变成一片可以观测的宇宙。
 
@@ -11,12 +11,12 @@
 
 ## 快速体验（模拟数据模式）
 
-**在线体验**：<https://silchenn.github.io/stellar-lanes/>（开启方法见 [docs/DEPLOY.md](docs/DEPLOY.md)）
+**在线体验**：<https://silchenn.github.io/vela/>（开启方法见 [docs/DEPLOY.md](docs/DEPLOY.md)）
 
 **本地运行**：不需要安装任何依赖，也不需要抓包环境。
 
 ```bash
-git clone https://github.com/silchenn/stellar-lanes.git
+git clone https://github.com/silchenn/vela.git
 ```
 
 然后用浏览器打开 `frontend/index.html`（直接双击即可；macOS 也可以在终端运行 `open frontend/index.html`）。
@@ -28,7 +28,7 @@ git clone https://github.com/silchenn/stellar-lanes.git
 ## 目录结构
 
 ```
-stellar-lanes/
+vela/
 ├── frontend/          3D 可视化前端（Three.js，目前为单文件原型）
 ├── backend/           数据采集与检测引擎（待开发）
 └── docs/
