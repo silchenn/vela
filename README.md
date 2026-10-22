@@ -11,11 +11,17 @@
 
 ## 快速体验（模拟数据模式）
 
-不需要抓包环境，直接用浏览器打开：
+**在线体验**：<https://你的用户名.github.io/stellar-lanes/>（开启方法见 [docs/DEPLOY.md](docs/DEPLOY.md)）
+
+**本地运行**：不需要安装任何依赖，也不需要抓包环境。
 
 ```bash
-open frontend/index.html
+git clone https://github.com/你的用户名/stellar-lanes.git
 ```
+
+然后用浏览器打开 `frontend/index.html`（直接双击即可；macOS 也可以在终端运行 `open frontend/index.html`）。
+
+> 页面会从 jsDelivr CDN 加载 Three.js，首次打开需要联网。
 
 可以演练「下载大文件 / 4K 视频 / DNS 风暴 / 端口扫描 / NAS 宕机」五个场景，点击任意恒星追踪它的进出港流量。
 
@@ -28,7 +34,8 @@ stellar-lanes/
 └── docs/
     ├── ROADMAP.md     项目定位、路线图与开发建议
     ├── DETECTIONS.md  检测规则设计（含 ATT&CK 映射）
-    └── ARCHITECTURE.md 架构与前后端消息格式
+    ├── ARCHITECTURE.md 架构、数据采集位置与前后端消息格式
+    └── DEPLOY.md      发布到 GitHub 与在线演示
 ```
 
 ## 状态
@@ -43,3 +50,7 @@ stellar-lanes/
 ## 使用边界
 
 本项目仅用于监控**你自己拥有或获得明确授权**的网络和设备。抓包、端口扫描等攻防演示请只在自己的实验环境中进行。
+
+## 许可证
+
+[MIT](LICENSE)
