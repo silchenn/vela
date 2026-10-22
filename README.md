@@ -11,12 +11,12 @@
 
 ## 快速体验（模拟数据模式）
 
-**在线体验**：<https://你的用户名.github.io/stellar-lanes/>（开启方法见 [docs/DEPLOY.md](docs/DEPLOY.md)）
+**在线体验**：<https://silchenn.github.io/stellar-lanes/>（开启方法见 [docs/DEPLOY.md](docs/DEPLOY.md)）
 
 **本地运行**：不需要安装任何依赖，也不需要抓包环境。
 
 ```bash
-git clone https://github.com/你的用户名/stellar-lanes.git
+git clone https://github.com/silchenn/stellar-lanes.git
 ```
 
 然后用浏览器打开 `frontend/index.html`（直接双击即可；macOS 也可以在终端运行 `open frontend/index.html`）。

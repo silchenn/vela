@@ -6,7 +6,7 @@
 
 ```bash
 cd ~/project/stellar-lanes
-git remote add origin https://github.com/<你的用户名>/stellar-lanes.git
+git remote add origin https://github.com/silchenn/stellar-lanes.git
 git push -u origin main
 ```
 
@@ -22,10 +22,10 @@ git push -u origin main
 4. 运行成功后，演示地址是：
 
    ```
-   https://<你的用户名>.github.io/stellar-lanes/
+   https://silchenn.github.io/stellar-lanes/
    ```
 
-5. 把这个地址填进 README 的「在线体验」链接，再填到仓库首页右侧 **About → Website**。
+5. README 的「在线体验」链接已经指向这个地址；再把它填到仓库首页右侧 **About → Website**。
 
 > 免费账户的 GitHub Pages 只支持**公开仓库**。
 
