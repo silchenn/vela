@@ -30,7 +30,7 @@ git clone https://github.com/silchenn/vela.git
 ```
 vela/
 ├── frontend/          3D 可视化前端（Three.js，目前为单文件原型）
-├── backend/           数据采集与检测引擎（待开发）
+├── backend/           数据采集与推送（Python，用法见 backend/README.md）
 └── docs/
     ├── ROADMAP.md     项目定位、路线图与开发建议
     ├── DETECTIONS.md  检测规则设计（含 ATT&CK 映射）
@@ -43,7 +43,8 @@ vela/
 | 模块 | 状态 |
 |---|---|
 | 前端原型（模拟数据） | ✅ 完成 |
-| 后端采集（本机 / 网关 conntrack） | ⬜ 计划中 |
+| 后端采集：本机抓包 → 聚合 → WebSocket | ✅ 完成 |
+| 后端采集：网关 conntrack | ⬜ 计划中 |
 | 检测引擎 | ⬜ 计划中 |
 | Suricata / Zeek 接入 | ⬜ 计划中 |
 

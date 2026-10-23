@@ -67,6 +67,7 @@ D1–D6 检测规则全部只依赖元数据，这也是业界 NDR（网络检�
   "src": "192.168.1.10",
   "dst": "140.82.112.3",
   "proto": "https",
+  "l4": "tcp",
   "port": 443,
   "bytes_up": 4096,
   "bytes_down": 182344,
@@ -74,7 +75,9 @@ D1–D6 检测规则全部只依赖元数据，这也是业界 NDR（网络检�
 }
 ```
 
-`proto` 取值：`https` / `quic` / `http` / `dns` / `alert`。
+`proto` 取值：`https` / `quic` / `http` / `dns` / `other` / `alert`。按端口近似判断，非 53/80/443/8080 端口的流量为 `other`（前端接入时需要为它补一个配色）。
+
+`l4` 为传输层（`tcp` / `udp`），`port` 为推测的服务端口。本机抓包模式下 `src` 总是本机一侧，`bytes_up` 是本机发出的字节数；两端都不是本机的广播/组播包保持原方向。
 
 ### node：节点信息与状态
 
@@ -88,6 +91,8 @@ D1–D6 检测规则全部只依赖元数据，这也是业界 NDR（网络检�
   "online": true
 }
 ```
+
+`kind` 取值：`local`（本机）/ `gateway`（默认网关）/ `lan`（私有地址）/ `multicast`（组播、广播）/ `external`。外网节点的 `name` 来自抓到的 DNS 响应，没有时为 `null`；`asn` 留到 M3 节点治理时填充。新连接先收到全部已知节点，之后只推送新增或改名的节点。
 
 ### alert：见 [DETECTIONS.md](DETECTIONS.md#告警消息格式)
 

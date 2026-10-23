@@ -8,3 +8,4 @@ dist/
 *.pcapng
 .env
 config.local.*
+*.egg-info/

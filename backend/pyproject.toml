@@ -1,0 +1,17 @@
+[project]
+name = "vela-backend"
+version = "0.1.0"
+description = "Vela 数据采集与聚合：本机抓包 → flow 聚合 → WebSocket"
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = [
+    "scapy>=2.6",
+    "websockets>=14",
+]
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["vela*"]
