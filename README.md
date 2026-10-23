@@ -13,6 +13,13 @@
 
 **在线体验**：<https://silchenn.github.io/vela/>（开启方法见 [docs/DEPLOY.md](docs/DEPLOY.md)）
 
+前端目前有两种视觉风格，最终用哪个还没定，页面左上角可以互相切换：
+
+| 风格 | 文件 | 在线地址 |
+|---|---|---|
+| 星际航道 | `frontend/index.html` | <https://silchenn.github.io/vela/> |
+| 赛博朋克 | `frontend/cyber.html` | <https://silchenn.github.io/vela/cyber.html> |
+
 **本地运行**：不需要安装任何依赖，也不需要抓包环境。
 
 ```bash
@@ -23,13 +30,15 @@ git clone https://github.com/silchenn/vela.git
 
 > 页面会从 jsDelivr CDN 加载 Three.js，首次打开需要联网。
 
-可以演练「下载大文件 / 4K 视频 / DNS 风暴 / 端口扫描 / NAS 宕机」五个场景，点击任意恒星追踪它的进出港流量。
+星际航道版可以演练「下载大文件 / 4K 视频 / DNS 风暴 / 端口扫描 / NAS 宕机」五个场景；赛博朋克版可以演练「DDoS 攻击 / 高负载 Torrent」。两版都可以点击节点追踪它的进出流量。
 
 ## 目录结构
 
 ```
 vela/
-├── frontend/          3D 可视化前端（Three.js，目前为单文件原型）
+├── frontend/          3D 可视化前端（Three.js 单文件原型）
+│   ├── index.html     星际航道风格
+│   └── cyber.html     赛博朋克风格
 ├── backend/           数据采集与推送（Python，用法见 backend/README.md）
 └── docs/
     ├── ROADMAP.md     项目定位、路线图与开发建议

@@ -1,0 +1,1027 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vela · Cyber-Grid</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#05010d;
+  --cyan:#00f0ff; --mag:#ff2bd6; --yel:#fcee0a; --red:#ff003c; --grn:#39ff14;
+  --txt:#c8f6ff; --dim:#6f7ea3;
+  --panel:rgba(12,4,28,.74);
+  --edge:rgba(0,240,255,.38);
+  --accent:var(--cyan);
+  --mono:'Share Tech Mono',ui-monospace,Menlo,monospace;
+  --disp:'Orbitron','Share Tech Mono',sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font-family:var(--mono);font-size:13px}
+button{font:inherit;color:inherit}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+
+/* ---------- screen fx ---------- */
+.fx{position:fixed;inset:0;pointer-events:none}
+.scan{background:repeating-linear-gradient(to bottom,rgba(255,255,255,.028) 0 1px,transparent 1px 3px);mix-blend-mode:overlay;animation:flick 6s infinite steps(1)}
+.vig{background:radial-gradient(ellipse at center,transparent 55%,rgba(5,1,13,.85) 100%)}
+#alarm{box-shadow:inset 0 0 180px 30px rgba(255,0,60,.55);opacity:0}
+body.alarm #alarm{animation:pulse 1.1s ease-in-out infinite}
+body.alarm{--accent:var(--red);--edge:rgba(255,0,60,.55)}
+@keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes flick{0%{opacity:1}48%{opacity:.85}49%{opacity:1}83%{opacity:.9}84%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.scan{animation:none}body.alarm #alarm{animation:none;opacity:.6}}
+
+/* ---------- labels ---------- */
+#labels{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+.lbl{position:absolute;left:0;top:0;white-space:nowrap;font-size:11px;line-height:1.25;text-align:center;
+  color:var(--txt);text-shadow:0 0 6px rgba(0,240,255,.6);will-change:transform}
+.lbl b{display:block;font-family:var(--disp);font-weight:500;font-size:10px;letter-spacing:.12em;text-transform:uppercase}
+.lbl i{font-style:normal;color:var(--dim);font-size:10px}
+.lbl.sel b,.lbl.hov b{color:var(--yel);text-shadow:0 0 8px var(--yel)}
+.lbl.bad b{color:var(--red);text-shadow:0 0 8px var(--red)}
+
+/* ---------- panels ---------- */
+.panel{background:var(--panel);border:1px solid var(--edge);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px));
+  position:relative;transition:border-color .3s}
+.panel::before{content:"";position:absolute;left:0;top:0;width:44px;height:2px;background:var(--accent);box-shadow:0 0 10px var(--accent)}
+.ph{display:flex;justify-content:space-between;align-items:center;padding:8px 12px 6px;font-family:var(--disp);font-size:10px;letter-spacing:.2em;color:var(--accent);border-bottom:1px solid rgba(0,240,255,.12)}
+.ph small{font-family:var(--mono);letter-spacing:.05em;color:var(--dim)}
+.pb{padding:10px 12px}
+
+/* ---------- top bar ---------- */
+#top{position:fixed;left:16px;right:16px;top:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;pointer-events:none}
+.brand{font-family:var(--disp);font-weight:900;font-size:22px;letter-spacing:.18em;color:var(--cyan);text-shadow:0 0 12px rgba(0,240,255,.8),0 0 30px rgba(255,43,214,.35)}
+.brand a{pointer-events:auto;display:inline-block;margin-top:4px;font-family:var(--mono);font-weight:400;font-size:10px;letter-spacing:.15em;color:var(--yel);text-decoration:none;text-shadow:none;border-bottom:1px dashed rgba(252,238,10,.5)}
+.brand a:hover{color:#fff}
+.brand small{display:block;font-family:var(--mono);font-weight:400;font-size:10px;letter-spacing:.3em;color:var(--mag);text-shadow:0 0 8px var(--mag)}
+.glitch{position:relative;display:inline-block}
+.glitch::before,.glitch::after{content:attr(data-text);position:absolute;left:0;top:0;width:100%;overflow:hidden}
+.glitch::before{color:var(--mag);clip-path:inset(0 0 58% 0);animation:g1 3.2s infinite steps(1)}
+.glitch::after{color:var(--yel);clip-path:inset(60% 0 0 0);animation:g2 2.7s infinite steps(1)}
+@keyframes g1{0%,90%{transform:none}91%{transform:translate(-3px,1px)}94%{transform:translate(3px,-1px)}97%{transform:translate(-1px,0)}}
+@keyframes g2{0%,86%{transform:none}87%{transform:translate(3px,0)}91%{transform:translate(-3px,1px)}95%{transform:translate(1px,-1px)}}
+@media (prefers-reduced-motion:reduce){.glitch::before,.glitch::after{animation:none;display:none}}
+.chips{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+.chip{border:1px solid var(--edge);background:var(--panel);padding:4px 10px;font-size:11px;letter-spacing:.12em;white-space:nowrap}
+.chip em{font-style:normal;color:var(--accent)}
+.chip.crit{border-color:var(--red);color:#fff;background:rgba(255,0,60,.3);animation:critbg .8s infinite}
+.chip.crit em{color:#fff;text-shadow:0 0 8px var(--red)}
+@keyframes critbg{50%{background:rgba(255,0,60,.65)}}
+#banner{position:fixed;left:50%;top:76px;transform:translateX(-50%);font-family:var(--disp);font-weight:700;font-size:15px;letter-spacing:.25em;
+  color:#fff;background:rgba(255,0,60,.22);border:1px solid var(--red);padding:8px 18px;text-shadow:0 0 10px var(--red);display:none;pointer-events:none;text-align:center;max-width:calc(100% - 32px)}
+#banner small{display:block;font-family:var(--mono);font-weight:400;font-size:11px;letter-spacing:.08em;color:#ffb3c4}
+body.alarm #banner{display:block}
+
+/* ---------- left HUD ---------- */
+#left{position:fixed;left:16px;top:84px;bottom:calc(var(--dock,64px) + 24px);width:270px;display:flex;flex-direction:column;gap:12px;overflow-y:auto;scrollbar-width:none}
+#left::-webkit-scrollbar{display:none}
+#left .panel{flex-shrink:0}
+@media (max-height:720px){#gauge{height:104px}.row{margin:3px 0}}
+#gauge{width:100%;height:132px;display:block}
+.big{text-align:center;margin-top:-6px}
+.big b{font-family:var(--disp);font-size:26px;font-weight:700;color:#fff;text-shadow:0 0 12px var(--accent)}
+.big span{display:block;color:var(--dim);font-size:10px;letter-spacing:.2em}
+.row{display:grid;grid-template-columns:96px 1fr 64px;align-items:center;gap:8px;margin:6px 0;font-size:11px}
+.row .k{color:var(--dim);letter-spacing:.1em}
+.row .v{text-align:right;color:#fff}
+.bar{height:6px;background:rgba(0,240,255,.08);position:relative;overflow:hidden}
+.bar i{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,var(--cyan),var(--mag));box-shadow:0 0 8px var(--cyan);transition:width .25s}
+body.alarm .bar.hot i{background:linear-gradient(90deg,var(--mag),var(--red))}
+.seg{display:flex;gap:2px}
+.seg i{flex:1;height:8px;background:rgba(0,240,255,.08)}
+
+/* ---------- right column ---------- */
+#right{position:fixed;right:16px;top:84px;bottom:calc(var(--dock,64px) + 24px);width:360px;display:flex;flex-direction:column;gap:12px}
+#term{flex:1;min-height:0;display:flex;flex-direction:column}
+#log{flex:1;overflow-y:auto;padding:8px 12px;font-size:11.5px;line-height:1.55;scrollbar-width:thin;scrollbar-color:var(--edge) transparent}
+.ln{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ln .t{color:var(--dim)}
+.ln .g{display:inline-block;min-width:52px}
+.k-flow .g{color:var(--cyan)} .k-dns .g{color:var(--mag)} .k-sys .g{color:var(--grn)}
+.k-warn .g{color:var(--yel)} .k-alert{color:#ffd1dc} .k-alert .g{color:var(--red)}
+.cursor{display:inline-block;width:7px;height:12px;background:var(--cyan);vertical-align:-1px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+#insp{display:none}
+#insp.on{display:block}
+#insp .name{font-family:var(--disp);font-size:16px;font-weight:700;letter-spacing:.08em;color:#fff;text-shadow:0 0 10px var(--accent)}
+#insp .meta{color:var(--dim);font-size:11px;margin:2px 0 8px}
+.kv{display:grid;grid-template-columns:repeat(2,1fr);gap:6px 12px;margin-bottom:8px}
+.kv div{font-size:11px;color:var(--dim);letter-spacing:.08em}
+.kv b{display:block;font-weight:400;font-size:14px;color:#fff}
+#spark{width:100%;height:84px;display:block;border:1px solid rgba(0,240,255,.15)}
+.x{background:none;border:1px solid var(--edge);color:var(--accent);cursor:pointer;font-size:10px;padding:1px 7px}
+.status-ok{color:var(--grn)} .status-bad{color:var(--red)}
+
+/* ---------- dock ---------- */
+#dock{position:fixed;left:16px;right:16px;bottom:12px;display:flex;gap:18px;align-items:center;flex-wrap:wrap;padding:10px 14px}
+.grp{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.gl{font-family:var(--disp);font-size:9px;letter-spacing:.25em;color:var(--dim);margin-right:4px}
+.btn{background:rgba(0,240,255,.06);border:1px solid var(--edge);padding:6px 12px;cursor:pointer;letter-spacing:.08em;font-size:12px;
+  clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));transition:background .15s,color .15s}
+.btn:hover{background:rgba(0,240,255,.16);color:#fff}
+.btn:focus-visible{outline:1px solid var(--yel);outline-offset:2px}
+.btn.on{background:var(--cyan);color:#05010d;border-color:var(--cyan);box-shadow:0 0 14px var(--cyan)}
+.btn.danger{border-color:rgba(255,0,60,.6);color:#ff8fa8}
+.btn.danger.on{background:var(--red);color:#fff;border-color:var(--red);box-shadow:0 0 18px var(--red)}
+.btn.warm.on{background:#ff8a00;border-color:#ff8a00;box-shadow:0 0 14px #ff8a00;color:#05010d}
+.pf{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;font-size:11px}
+.pf i{width:8px;height:8px;display:inline-block;box-shadow:0 0 6px currentColor}
+.pf.off{opacity:.35}
+.pf.off i{box-shadow:none}
+.pd{display:grid;grid-template-columns:56px 1fr 40px;gap:8px;align-items:center;margin:5px 0;font-size:11px}
+.pd .bar i{transition:width .4s}
+.pd span:last-child{text-align:right;color:#fff}
+
+/* ---------- narrow screens ---------- */
+@media (max-width:1100px){#left{width:230px}#right{width:300px}}
+@media (max-width:820px){
+  #left,#term{display:none}
+  #right{top:auto;bottom:auto;left:16px;right:16px;width:auto;top:70px}
+  .brand{font-size:16px}
+  .chips .chip:nth-child(n+3){display:none}
+  #dock{gap:10px;padding:8px 10px}
+  .gl{display:none}
+  .btn{padding:5px 9px;font-size:11px}
+}
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="网络流量三维星图"></canvas>
+<div id="labels"></div>
+<div class="fx scan"></div>
+<div class="fx vig"></div>
+<div class="fx" id="alarm"></div>
+
+<header id="top">
+  <div class="brand"><span class="glitch" data-text="VELA // CYBER-GRID">VELA // CYBER-GRID</span><small>NETWORK TRAFFIC MONITOR · SIM MODE</small><a href="index.html">← 切换到星际航道风格</a></div>
+  <div class="chips">
+    <div class="chip">THREAT <em id="threat">NOMINAL</em></div>
+    <div class="chip">NODES <em id="cNodes">0</em></div>
+    <div class="chip">UPTIME <em id="cUp">00:00:00</em></div>
+    <div class="chip"><em id="cClock">--:--:--</em></div>
+  </div>
+</header>
+<div id="banner">⚠ INTRUSION DETECTED // DDoS<small>针对网关的 SYN Flood · MITRE ATT&amp;CK T1498.001</small></div>
+
+<aside id="left">
+  <section class="panel">
+    <div class="ph">THROUGHPUT <small>log scale</small></div>
+    <div class="pb">
+      <canvas id="gauge"></canvas>
+      <div class="big"><b id="tput">0 B/s</b><span>TOTAL BANDWIDTH</span></div>
+    </div>
+  </section>
+  <section class="panel">
+    <div class="ph">TELEMETRY <small id="pktTotal">0 pkts</small></div>
+    <div class="pb">
+      <div class="row"><span class="k">CORE LOAD</span><span class="bar hot"><i id="bLoad"></i></span><span class="v" id="vLoad">0%</span></div>
+      <div class="row"><span class="k">PKT / S</span><span class="bar hot"><i id="bPkt"></i></span><span class="v" id="vPkt">0</span></div>
+      <div class="row"><span class="k">LINKS</span><span class="bar"><i id="bLinks"></i></span><span class="v" id="vLinks">0</span></div>
+      <div class="row"><span class="k">DROPPED</span><span class="bar hot"><i id="bDrop"></i></span><span class="v" id="vDrop">0</span></div>
+    </div>
+  </section>
+  <section class="panel">
+    <div class="ph">PROTOCOL MIX <small>by bytes</small></div>
+    <div class="pb" id="mix"></div>
+  </section>
+</aside>
+
+<aside id="right">
+  <section class="panel" id="insp" aria-live="polite">
+    <div class="ph">NODE INSPECTOR <button class="x" id="inspClose" aria-label="关闭">ESC ✕</button></div>
+    <div class="pb">
+      <div class="name" id="iName">—</div>
+      <div class="meta" id="iMeta">—</div>
+      <div class="kv">
+        <div>STATUS<b id="iStatus">—</b></div>
+        <div>PEERS<b id="iPeers">0</b></div>
+        <div>INBOUND<b id="iIn">0</b></div>
+        <div>OUTBOUND<b id="iOut">0</b></div>
+        <div>TRANSFERRED<b id="iTotal">0</b></div>
+        <div>CLASS<b id="iKind">—</b></div>
+      </div>
+      <canvas id="spark"></canvas>
+    </div>
+  </section>
+  <section class="panel" id="term">
+    <div class="ph">TERMINAL // LIVE FEED <small id="logCount">0</small></div>
+    <div id="log" role="log"></div>
+  </section>
+</aside>
+
+<footer id="dock" class="panel">
+  <div class="grp"><span class="gl">SIMULATE</span>
+    <button class="btn danger" id="bDdos" aria-pressed="false">⚠ 注入 DDoS 攻击</button>
+    <button class="btn warm" id="bTorrent" aria-pressed="false">⇅ 高负载 Torrent</button>
+  </div>
+  <div class="grp"><span class="gl">PROTOCOL</span><span class="grp" id="filters"></span></div>
+  <div class="grp"><span class="gl">SPEED</span><span class="grp" id="speeds"></span></div>
+  <div class="grp">
+    <button class="btn" id="bSound" aria-pressed="false">AUDIO: OFF</button>
+    <button class="btn" id="bHome">RESET VIEW</button>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<script>
+(() => {
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = id => document.getElementById(id);
+const rand = (a,b) => a + Math.random()*(b-a);
+const pick = a => a[(Math.random()*a.length)|0];
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const fmt = b => b < 1024 ? b.toFixed(0)+' B/s' : b < 1048576 ? (b/1024).toFixed(1)+' KB/s' : (b/1048576).toFixed(1)+' MB/s';
+const fmtB = b => b < 1048576 ? (b/1024).toFixed(0)+' KB' : b < 1073741824 ? (b/1048576).toFixed(1)+' MB' : (b/1073741824).toFixed(2)+' GB';
+const clock = () => new Date().toTimeString().slice(0,8);
+const hms = s => [s/3600, s/60%60, s%60].map(v => String(Math.floor(v)).padStart(2,'0')).join(':');
+
+/* ---------- protocol palette（与 backend 的 proto 取值一致） ---------- */
+const PROTO = {
+  https:{name:'HTTPS', hex:'#00f0ff', port:443, l4:'tcp'},
+  quic: {name:'QUIC',  hex:'#fcee0a', port:443, l4:'udp'},
+  http: {name:'HTTP',  hex:'#39ff14', port:80,  l4:'tcp'},
+  dns:  {name:'DNS',   hex:'#ff2bd6', port:53,  l4:'udp'},
+  other:{name:'OTHER', hex:'#ff8a00', port:0,   l4:'tcp'},
+  alert:{name:'ALERT', hex:'#ff003c', port:0,   l4:'tcp'},
+};
+const protoOn = {};
+for (const k in PROTO){ PROTO[k].color = new THREE.Color(PROTO[k].hex); protoOn[k] = true; }
+
+/* ---------- three setup ---------- */
+const canvas = $('c');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, powerPreference:'high-performance'});
+const PR = Math.min(devicePixelRatio || 1, 1.75);
+renderer.setPixelRatio(PR);
+renderer.setClearColor(0x05010d, 1);
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x05010d, 0.0036);
+const camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, 0.1, 2000);
+const HOME_POS = new THREE.Vector3(0, 52, innerWidth/innerHeight < 0.8 ? 200 : 128);
+const HOME_TARGET = new THREE.Vector3(0, 10, 0);
+camera.position.copy(HOME_POS);
+const controls = new THREE.OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.dampingFactor = 0.06;
+controls.minDistance = 14; controls.maxDistance = 340;
+controls.maxPolarAngle = Math.PI*0.48;
+controls.target.copy(HOME_TARGET);
+controls.autoRotate = !REDUCED; controls.autoRotateSpeed = 0.25;
+
+const composer = new THREE.EffectComposer(renderer);
+composer.addPass(new THREE.RenderPass(scene, camera));
+const bloom = new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), REDUCED ? 0.8 : 1.15, 0.55, 0.0);
+composer.addPass(bloom);
+
+const ADD = {transparent:true, blending:THREE.AdditiveBlending, depthWrite:false};
+const lineMat = (hex, op) => new THREE.LineBasicMaterial({color:hex, opacity:op, ...ADD});
+const fillMat = (hex, op) => new THREE.MeshBasicMaterial({color:hex, opacity:op, ...ADD});
+
+/* ---------- cyber grid floor ---------- */
+const gridMat = new THREE.ShaderMaterial({
+  uniforms:{uTime:{value:0}, uAlarm:{value:0}, uA:{value:new THREE.Color('#00f0ff')}, uB:{value:new THREE.Color('#ff2bd6')}},
+  vertexShader:`varying vec3 vW; void main(){ vec4 w = modelMatrix*vec4(position,1.); vW = w.xyz; gl_Position = projectionMatrix*viewMatrix*w; }`,
+  fragmentShader:`
+    uniform float uTime, uAlarm; uniform vec3 uA, uB; varying vec3 vW;
+    float grid(vec2 p, float w){ vec2 g = abs(fract(p-.5)-.5)/fwidth(p); return 1.-min(min(g.x,g.y)/w, 1.); }
+    void main(){
+      float r = length(vW.xz);
+      float fine = grid(vW.xz/6., 1.);
+      float major = grid(vW.xz/30., 1.6);
+      float pulse = smoothstep(3., 0., abs(r - mod(uTime*34., 260.)));
+      float fade = smoothstep(260., 30., r);
+      vec3 col = mix(uA, uB, smoothstep(10., 170., r));
+      col = mix(col, vec3(1., 0., .24), uAlarm);
+      float a = (fine*.22 + major*.75 + pulse*.55) * fade;
+      gl_FragColor = vec4(col*a, 1.);
+    }`,
+  extensions:{derivatives:true}, ...ADD,
+});
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), gridMat);
+floor.rotation.x = -Math.PI/2;
+scene.add(floor);
+
+/* ---------- drifting dust ---------- */
+const DUST = 1400;
+const dustGeo = new THREE.BufferGeometry();
+{
+  const p = new Float32Array(DUST*3), c = new Float32Array(DUST*3);
+  const ca = new THREE.Color('#00f0ff'), cb = new THREE.Color('#ff2bd6');
+  for (let i = 0; i < DUST; i++){
+    p[i*3] = rand(-260,260); p[i*3+1] = rand(0,120); p[i*3+2] = rand(-260,260);
+    const col = Math.random() < .5 ? ca : cb, k = rand(.15,.5);
+    c[i*3] = col.r*k; c[i*3+1] = col.g*k; c[i*3+2] = col.b*k;
+  }
+  dustGeo.setAttribute('position', new THREE.BufferAttribute(p, 3));
+  dustGeo.setAttribute('color', new THREE.BufferAttribute(c, 3));
+}
+const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({size:.7, vertexColors:true, ...ADD}));
+scene.add(dust);
+
+/* ---------- nodes ---------- */
+const GW_DEF = {id:'gw', name:'Gateway', ip:'192.168.1.1', kind:'网关 · 核心路由', role:'gw', angle:0, r:0, y:10, size:4, hex:'#00f0ff'};
+const LAN_DEFS = [
+  ['pc','本机','192.168.1.10','工作站'], ['nas','NAS','192.168.1.20','存储'], ['tv','客厅电视','192.168.1.30','终端'],
+  ['phone','手机','192.168.1.41','终端'], ['laptop','笔记本','192.168.1.42','终端'], ['iot','智能音箱','192.168.1.55','IoT'],
+];
+const EXT_DEFS = [
+  ['gh','GitHub','140.82.112.3','AS36459'], ['cf','Cloudflare','104.16.132.229','AS13335 · CDN'],
+  ['g','Google','142.250.199.78','AS15169'], ['yt','视频 CDN','172.217.24.14','AS15169 · 流媒体'],
+  ['aws','AWS 东京','54.239.98.12','AS16509 · 云服务'], ['ali','阿里云','47.246.24.233','AS45102 · 云服务'],
+  ['ms','Microsoft','20.190.151.70','AS8075'], ['bili','哔哩哔哩','119.3.70.188','AS55990 · 视频'],
+  ['vps','我的 VPS','203.0.113.24','云服务器 · 备份目标'], ['dns1','1.1.1.1','1.1.1.1','DNS 解析器'],
+  ['dns2','8.8.8.8','8.8.8.8','DNS 解析器'], ['steam','Steam','23.52.74.17','AS32590 · CDN'],
+];
+const LAN_HEX = ['#00f0ff','#5cf2ff','#7ad7ff','#00ffc8'];
+const EXT_HEX = ['#ff4fd8','#c38bff','#ffe14d','#ff4fd8','#8fd3ff'];
+
+const NODES = [], N = {}, HITS = [];
+const labels = $('labels');
+let selected = null, hovered = null;
+
+function shapeFor(role, s){
+  switch (role){
+    case 'lan':  return new THREE.BoxGeometry(s*1.5, s*1.5, s*1.5);
+    case 'bot':  return new THREE.TetrahedronGeometry(s*1.3);
+    case 'peer': return new THREE.DodecahedronGeometry(s*1.1);
+    default:     return new THREE.OctahedronGeometry(s*1.35);
+  }
+}
+
+function buildCore(body){
+  const parts = {};
+  parts.ico = new THREE.LineSegments(new THREE.WireframeGeometry(new THREE.IcosahedronGeometry(4.4, 1)), lineMat('#00f0ff', .8));
+  parts.shell = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(6.8, 0)), lineMat('#ff2bd6', .9));
+  parts.sphere = new THREE.Mesh(new THREE.SphereGeometry(2.1, 32, 16), new THREE.MeshBasicMaterial({color:'#c9fbff', transparent:true}));
+  parts.ring1 = new THREE.Mesh(new THREE.TorusGeometry(9.5, .07, 6, 96), fillMat('#00f0ff', .9));
+  parts.ring2 = new THREE.Mesh(new THREE.TorusGeometry(11.8, .05, 6, 96), fillMat('#ff2bd6', .7));
+  parts.ring1.rotation.x = Math.PI/2;
+  parts.ring2.rotation.x = Math.PI/2.4;
+  for (const k in parts) body.add(parts[k]);
+  return parts;
+}
+
+function addNode(d){
+  const n = {...d, inRate:0, outRate:0, hist:[], total:0, peers:0, alpha:0, target:1, dying:false,
+             flash:0, phase:Math.random()*6.28, mats:[], pos:new THREE.Vector3()};
+  const base = new THREE.Group();
+  base.position.set(Math.cos(d.angle)*d.r, 0, Math.sin(d.angle)*d.r);
+  const body = new THREE.Group();
+  body.position.y = d.y;
+  base.add(body);
+  const s = d.size;
+  if (d.role === 'gw'){
+    n.core = buildCore(body);
+  } else {
+    const geo = shapeFor(d.role, s);
+    n.shape = new THREE.Group();
+    n.shape.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), lineMat(d.hex, .95)));
+    n.shape.add(new THREE.Mesh(geo, fillMat(d.hex, .12)));
+    n.shape.add(new THREE.Mesh(new THREE.SphereGeometry(s*.28, 12, 8), fillMat(d.hex, .9)));
+    body.add(n.shape);
+  }
+  const ringR = d.role === 'gw' ? 8 : s*1.5;
+  const ring = new THREE.Mesh(new THREE.RingGeometry(ringR, ringR + (d.role === 'gw' ? .35 : .16), 48), fillMat(d.hex, .55));
+  ring.rotation.x = -Math.PI/2; ring.position.y = .05;
+  base.add(ring);
+  const pillar = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, d.y, 0)]), lineMat(d.hex, .2));
+  base.add(pillar);
+  const hit = new THREE.Mesh(new THREE.SphereGeometry(Math.max(s*1.9, 2.4), 8, 6), new THREE.MeshBasicMaterial({visible:false}));
+  hit.userData.node = n;
+  body.add(hit); HITS.push(hit);
+
+  base.traverse(o => { if (o.material && o.material.visible !== false) n.mats.push([o.material, o.material.opacity]); });
+  for (const [m] of n.mats) m.opacity = 0;
+
+  n.label = document.createElement('div');
+  n.label.className = 'lbl' + (d.role === 'bot' ? ' bad' : '');
+  n.label.innerHTML = `<b></b><i></i>`;
+  n.label.firstChild.textContent = d.name;
+  n.label.lastChild.textContent = d.ip;
+  n.showLabel = d.role !== 'bot' && d.role !== 'peer';
+  labels.appendChild(n.label);
+
+  n.base = base; n.body = body;
+  scene.add(base);
+  NODES.push(n); N[n.id] = n;
+  updateNodePos(n, 0);
+  if (d.role !== 'gw' && d.role !== 'bot' && d.role !== 'peer') getSeg(n, N.gw);
+  return n;
+}
+
+function removeNode(n){
+  scene.remove(n.base);
+  n.base.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+  n.label.remove();
+  HITS.splice(HITS.findIndex(h => h.userData.node === n), 1);
+  NODES.splice(NODES.indexOf(n), 1);
+  delete N[n.id];
+  n.dead = true;
+  for (const [key, s] of segs) if (s.a === n || s.b === n){ scene.remove(s.line); s.line.geometry.dispose(); s.line.material.dispose(); segs.delete(key); }
+  if (selected === n) closeInspector();
+}
+
+function updateNodePos(n, t){
+  const bob = n.role === 'gw' ? Math.sin(t*.9)*.4 : Math.sin(t*.8 + n.phase)*.6;
+  n.body.position.y = n.y + bob;
+  n.pos.copy(n.base.position).add(n.body.position);
+}
+
+/* ---------- links (quadratic bezier between live node positions) ---------- */
+const segs = new Map();
+const SEG_PTS = 40;
+const _c = new THREE.Vector3(), _m = new THREE.Vector3();
+function bez(a, b, t, out){
+  const A = a.pos, B = b.pos;
+  _m.addVectors(A, B).multiplyScalar(.5);
+  _c.set(_m.x, _m.y + A.distanceTo(B)*.2 + 2, _m.z);
+  const u = 1 - t;
+  return out.set(u*u*A.x + 2*u*t*_c.x + t*t*B.x, u*u*A.y + 2*u*t*_c.y + t*t*B.y, u*u*A.z + 2*u*t*_c.z + t*t*B.z);
+}
+function getSeg(a, b){
+  const key = a.id < b.id ? a.id+'|'+b.id : b.id+'|'+a.id;
+  let s = segs.get(key);
+  if (!s){
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(SEG_PTS*3), 3));
+    s = {a, b, load:0, shown:0, color:new THREE.Color('#1a5a7a'), line:new THREE.Line(geo, lineMat('#1a5a7a', .1))};
+    scene.add(s.line);
+    segs.set(key, s);
+  }
+  return s;
+}
+const _v = new THREE.Vector3();
+function updateSegGeometry(s){
+  const arr = s.line.geometry.attributes.position.array;
+  for (let i = 0; i < SEG_PTS; i++){ bez(s.a, s.b, i/(SEG_PTS-1), _v); arr[i*3] = _v.x; arr[i*3+1] = _v.y; arr[i*3+2] = _v.z; }
+  s.line.geometry.attributes.position.needsUpdate = true;
+}
+
+addNode(GW_DEF);
+LAN_DEFS.forEach(([id,name,ip,kind], i) => addNode({id, name, ip, kind, role:'lan',
+  angle:i/LAN_DEFS.length*Math.PI*2 + .3, r:30, y:5 + (i%2)*2, size:1.4, hex:LAN_HEX[i%LAN_HEX.length]}));
+EXT_DEFS.forEach(([id,name,ip,kind], i) => addNode({id, name, ip, kind, role:'ext',
+  angle:i/EXT_DEFS.length*Math.PI*2, r:70 + (i%2)*8, y:15 + (i%3)*7, size:1.5, hex:kind.startsWith('DNS') ? '#ff2bd6' : EXT_HEX[i%EXT_HEX.length]}));
+
+/* ---------- packet particles ---------- */
+const MAXH = 4200, TAIL = 4, PPH = TAIL + 1, MAXP = MAXH*PPH;
+const pPos = new Float32Array(MAXP*3), pCol = new Float32Array(MAXP*3), pSize = new Float32Array(MAXP);
+const pGeo = new THREE.BufferGeometry();
+pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3).setUsage(THREE.DynamicDrawUsage));
+pGeo.setAttribute('acol', new THREE.BufferAttribute(pCol, 3).setUsage(THREE.DynamicDrawUsage));
+pGeo.setAttribute('asize', new THREE.BufferAttribute(pSize, 1).setUsage(THREE.DynamicDrawUsage));
+const pMat = new THREE.ShaderMaterial({
+  uniforms:{uPR:{value:PR}},
+  vertexShader:`attribute vec3 acol; attribute float asize; uniform float uPR; varying vec3 vC;
+    void main(){ vC = acol; vec4 mv = modelViewMatrix*vec4(position,1.); gl_PointSize = asize*uPR*(240./-mv.z); gl_Position = projectionMatrix*mv; }`,
+  fragmentShader:`varying vec3 vC; void main(){ float r = length(gl_PointCoord-.5); float a = smoothstep(.5, 0., r); gl_FragColor = vec4(vC*a*a*1.7, 1.); }`,
+  ...ADD,
+});
+const points = new THREE.Points(pGeo, pMat);
+points.frustumCulled = false;
+scene.add(points);
+const heads = [];
+let arrivals = 0;
+
+function spawn(f, path){
+  if (heads.length >= MAXH) return;
+  heads.push({path, u:0, sp:rand(26,36)*(f.proto === 'alert' ? 1.5 : 1), c:PROTO[f.proto].color, p:f.proto, sz:f.proto === 'alert' ? 3.4 : 2.7});
+}
+function samplePath(path, u, out){
+  const i = Math.min(path.length - 1, Math.floor(u));
+  const [a, b] = path[i];
+  return bez(a, b, clamp(u - i, 0, 1), out);
+}
+
+/* ---------- flows（与 backend flow 消息同一模型：path 首尾为两端，up/down 为字节/秒） ---------- */
+const flows = new Map();
+let flowSeq = 0;
+function addFlow(o){
+  const proto = PROTO[o.proto];
+  const f = {id:++flowSeq, path:o.path, proto:o.proto, port:o.port ?? proto.port, l4:o.l4 ?? proto.l4,
+             up:o.up, down:o.down, ttl:o.ttl ?? Infinity, age:0, tag:o.tag, cu:1, cd:1};
+  const nodes = o.path.map(id => N[id]);
+  f.upPath = []; f.downPath = [];
+  for (let i = 0; i < nodes.length - 1; i++){
+    getSeg(nodes[i], nodes[i+1]);
+    f.upPath.push([nodes[i], nodes[i+1]]);
+    f.downPath.unshift([nodes[i+1], nodes[i]]);
+  }
+  flows.set(f.id, f);
+  if (o.log) logFlow(f, nodes[0], nodes[nodes.length-1], o.log);
+  return f;
+}
+function dropTag(tag){ for (const [id, f] of flows) if (f.tag === tag) flows.delete(id); }
+const particleRate = b => b <= 0 ? 0 : clamp((Math.log10(b) - 1.5)*3.2, .3, 24);
+
+/* ---------- terminal ---------- */
+const logEl = $('log');
+let logN = 0;
+function log(kind, tag, text){
+  const near = logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 30;
+  const el = document.createElement('div');
+  el.className = 'ln k-' + kind;
+  el.innerHTML = `<span class="t">${clock()}</span> <span class="g">[${tag}]</span> `;
+  el.append(text);
+  logEl.insertBefore(el, cursor);
+  while (logEl.childElementCount > 160) logEl.firstChild.remove();
+  $('logCount').textContent = ++logN;
+  if (near) logEl.scrollTop = logEl.scrollHeight;
+}
+const cursor = document.createElement('div');
+cursor.className = 'ln'; cursor.innerHTML = '<span class="t">&gt;</span> <span class="cursor"></span>';
+logEl.appendChild(cursor);
+function logFlow(f, a, z){
+  const p = PROTO[f.proto];
+  log(f.proto === 'dns' ? 'dns' : 'flow', f.proto === 'dns' ? 'DNS' : 'FLOW',
+      `${a.ip} → ${z.ip}:${f.port}/${p.name}  ${z.name}  ↓${fmt(f.down)} ↑${fmt(f.up)}`);
+}
+
+/* ---------- traffic simulator ---------- */
+const S = {ddos:false, torrent:false};
+let speedMul = 1;
+function persistent(){
+  addFlow({path:['nas','gw','vps'], proto:'https', up:1.4e6, down:22e3, tag:'backup', log:true});
+  addFlow({path:['iot','gw','aws'], proto:'https', up:1800, down:3200, tag:'iot'});
+  addFlow({path:['phone','gw','ali'], proto:'https', up:600, down:1400, tag:'push'});
+  addFlow({path:['tv','gw','yt'], proto:'quic', up:60e3, down:3.3e6, tag:'video', log:true});
+}
+function background(){
+  if (Math.random() < .35){
+    const c = pick(['pc','laptop','phone','tv','iot']);
+    addFlow({path:[c,'gw',pick(['dns1','dns2'])], proto:'dns', up:90, down:180, ttl:.5, log:Math.random() < .3});
+  }
+  if (Math.random() < .1){
+    const c = pick(['pc','laptop','phone']), s = pick(['gh','cf','g','ms','bili','ali','steam']);
+    const down = rand(40e3, 2.5e6);
+    addFlow({path:[c,'gw',s], proto:(s === 'g' || s === 'bili') && Math.random() < .6 ? 'quic' : 'https', down, up:down*rand(.03,.08), ttl:rand(1.5,5), log:true});
+  }
+  if (Math.random() < .025) addFlow({path:[pick(['pc','laptop']),'gw','ms'], proto:'http', down:rand(80e3,260e3), up:4e3, ttl:rand(1.5,3), log:true});
+  if (Math.random() < .02) addFlow({path:['pc','nas'], proto:'other', port:445, down:rand(2e6,9e6), up:40e3, ttl:rand(2,4), log:true});
+}
+const randPublicIP = () => [pick([31,45,91,103,141,185,193,212]), (Math.random()*255)|0, (Math.random()*255)|0, 1 + (Math.random()*253)|0].join('.');
+
+function setDDoS(on){
+  S.ddos = on;
+  setPressed($('bDdos'), on);
+  document.body.classList.toggle('alarm', on);
+  $('threat').textContent = on ? 'CRITICAL' : (S.torrent ? 'ELEVATED' : 'NOMINAL');
+  $('threat').parentElement.classList.toggle('crit', on);
+  if (on){
+    const count = 28;
+    log('alert', 'ALERT', `入站 SYN 速率异常：${count} 个来源同时冲击网关 ${N.gw.ip}`);
+    log('alert', 'ALERT', 'MITRE ATT&CK T1498.001 Direct Network Flood · severity=HIGH');
+    for (let i = 0; i < count; i++){
+      setTimeout(() => {
+        if (!S.ddos) return;
+        const n = addNode({id:'bot'+i, name:'BOTNET', ip:randPublicIP(), kind:'僵尸网络节点', role:'bot',
+          angle:rand(0, Math.PI*2), r:rand(100,125), y:rand(6,42), size:rand(.8,1.2), hex:'#ff003c'});
+        addFlow({path:[n.id,'gw'], proto:'alert', port:pick([80,443,53]), l4:'tcp', up:rand(1.5e6,5e6), down:0, tag:'ddos'});
+        if (i % 7 === 0) log('alert', 'BLOCK', `丢弃来自 ${n.ip} 的 SYN 洪泛（${(rand(8,40)|0)}k pkt/s）`);
+      }, i*70);
+    }
+    alarmSound();
+  } else {
+    dropTag('ddos');
+    for (const n of NODES) if (n.role === 'bot'){ n.target = 0; n.dying = true; }
+    log('sys', 'SYS', '攻击源已全部封禁，上游清洗生效，网关恢复正常');
+  }
+}
+function setTorrent(on){
+  S.torrent = on;
+  setPressed($('bTorrent'), on);
+  if (!S.ddos) $('threat').textContent = on ? 'ELEVATED' : 'NOMINAL';
+  if (on){
+    log('warn', 'WARN', '本机发起大量 P2P 连接（UDP 6881，uTP），带宽占用飙升');
+    for (let i = 0; i < 14; i++){
+      setTimeout(() => {
+        if (!S.torrent) return;
+        const n = addNode({id:'peer'+i, name:'PEER', ip:randPublicIP(), kind:'BitTorrent 对等节点', role:'peer',
+          angle:i/14*Math.PI*2 + rand(-.1,.1), r:rand(86,96), y:rand(4,30), size:.9, hex:'#ff8a00'});
+        addFlow({path:['pc','gw',n.id], proto:'other', port:6881, l4:'udp', down:rand(.8e6,4e6), up:rand(.2e6,.9e6), tag:'torrent', log:i % 4 === 0});
+      }, i*110);
+    }
+  } else {
+    dropTag('torrent');
+    for (const n of NODES) if (n.role === 'peer'){ n.target = 0; n.dying = true; }
+    log('sys', 'SYS', 'P2P 会话已结束');
+  }
+}
+function setPressed(btn, on){ btn.classList.toggle('on', on); btn.setAttribute('aria-pressed', on); }
+
+/* ---------- stats tick (200ms，与 backend 聚合窗口一致) ---------- */
+let total = 0, shownTotal = 0, pkts = 0, dropped = 0, alarmT = 0, flowsActive = 0;
+const mixBytes = {}, mixShown = {};
+for (const k in PROTO){ mixBytes[k] = 0; mixShown[k] = 0; }
+function simTick(){
+  background();
+  for (const n of NODES){ n._in = 0; n._out = 0; n._peers = new Set(); }
+  for (const s of segs.values()){ s._load = 0; s._pb = {}; }
+  for (const k in mixBytes) mixBytes[k] = 0;
+  total = 0; flowsActive = flows.size;
+  for (const f of flows.values()){
+    const b = f.up + f.down, nodes = f.path.map(id => N[id]);
+    if (nodes.some(n => !n)) continue;
+    total += b; mixBytes[f.proto] += b;
+    const a = nodes[0], z = nodes[nodes.length-1];
+    a._out += f.up; a._in += f.down; z._in += f.up; z._out += f.down;
+    a._peers.add(z.id); z._peers.add(a.id);
+    for (let i = 1; i < nodes.length - 1; i++){ nodes[i]._in += b; nodes[i]._out += b; }
+    for (let i = 0; i < nodes.length - 1; i++){
+      const s = getSeg(nodes[i], nodes[i+1]);
+      s._load += b; s._pb[f.proto] = (s._pb[f.proto] || 0) + b;
+    }
+  }
+  for (const n of NODES){
+    n.inRate += (n._in - n.inRate)*.5; n.outRate += (n._out - n.outRate)*.5;
+    n.total += (n._in + n._out)*.2; n.peers = n._peers.size;
+    n.hist.push([n.inRate, n.outRate]); if (n.hist.length > 90) n.hist.shift();
+  }
+  for (const s of segs.values()){
+    s.load += (s._load - s.load)*.4;
+    let best = null, bv = 0;
+    for (const k in s._pb) if (protoOn[k] && s._pb[k] > bv){ bv = s._pb[k]; best = k; }
+    s.color.copy(best ? PROTO[best].color : new THREE.Color('#1a5a7a'));
+  }
+  pkts += total*.2/850;
+  if (S.ddos) dropped += rand(2000, 9000);
+  alarmT += .2;
+  if (S.ddos && alarmT > 1.4){ alarmT = 0; alarmSound(); }
+  updateHUD();
+  if (selected) updateInspector();
+}
+
+/* ---------- HUD ---------- */
+const mixEl = $('mix'), mixRows = {};
+for (const k in PROTO){
+  const row = document.createElement('div');
+  row.className = 'pd';
+  row.innerHTML = `<span style="color:${PROTO[k].hex}">${PROTO[k].name}</span><span class="bar"><i style="background:${PROTO[k].hex};box-shadow:0 0 8px ${PROTO[k].hex}"></i></span><span>0%</span>`;
+  mixEl.appendChild(row);
+  mixRows[k] = row;
+}
+const t0 = performance.now();
+function updateHUD(){
+  shownTotal += (total - shownTotal)*.35;
+  $('tput').textContent = fmt(shownTotal);
+  const load = clamp(shownTotal/150e6, 0, 1)*100;
+  $('vLoad').textContent = load.toFixed(0) + '%'; $('bLoad').style.width = load + '%';
+  const pps = shownTotal/850;
+  $('vPkt').textContent = pps < 1000 ? pps.toFixed(0) : (pps/1000).toFixed(1) + 'k';
+  $('bPkt').style.width = clamp(Math.log10(pps + 1)/6, 0, 1)*100 + '%';
+  $('vLinks').textContent = flowsActive; $('bLinks').style.width = clamp(flowsActive/60, 0, 1)*100 + '%';
+  $('vDrop').textContent = dropped < 1e3 ? dropped.toFixed(0) : (dropped/1e3).toFixed(0) + 'k';
+  $('bDrop').style.width = S.ddos ? '100%' : clamp(dropped/2e6, 0, 1)*100 + '%';
+  $('pktTotal').textContent = Math.floor(pkts).toLocaleString('en-US') + ' pkts';
+  $('cNodes').textContent = NODES.filter(n => !n.dying).length;
+  $('cUp').textContent = hms((performance.now() - t0)/1000);
+  $('cClock').textContent = clock();
+  const sum = Object.values(mixBytes).reduce((a, b) => a + b, 0) || 1;
+  for (const k in PROTO){
+    mixShown[k] += (mixBytes[k]/sum*100 - mixShown[k])*.3;
+    mixRows[k].children[1].firstChild.style.width = mixShown[k] + '%';
+    mixRows[k].children[2].textContent = mixShown[k].toFixed(0) + '%';
+  }
+  drawGauge(shownTotal);
+}
+
+const gauge = $('gauge'), gctx = gauge.getContext('2d');
+function drawGauge(bps){
+  const w = gauge.width, h = gauge.height, d = PR;
+  gctx.clearRect(0, 0, w, h);
+  const cx = w/2, cy = h - 22*d, R = Math.min(w/2 - 14*d, h - 34*d);
+  const a0 = Math.PI*.92, a1 = Math.PI*2.08;
+  const frac = clamp((Math.log10(Math.max(bps, 1)) - 4)/5, 0, 1);
+  const alarm = S.ddos;
+  const SEGN = 44;
+  for (let i = 0; i < SEGN; i++){
+    const k = i/SEGN, a = a0 + (a1 - a0)*k, b = a0 + (a1 - a0)*(k + 1/SEGN) - .02;
+    gctx.beginPath(); gctx.arc(cx, cy, R, a, b);
+    gctx.lineWidth = 9*d;
+    if (k < frac){
+      gctx.strokeStyle = alarm ? (k > .6 ? '#ff003c' : '#ff2bd6') : k < .55 ? '#00f0ff' : k < .8 ? '#ff2bd6' : '#fcee0a';
+      gctx.shadowColor = gctx.strokeStyle; gctx.shadowBlur = 10*d;
+    } else { gctx.strokeStyle = 'rgba(0,240,255,.1)'; gctx.shadowBlur = 0; }
+    gctx.stroke();
+  }
+  gctx.shadowBlur = 0;
+  gctx.fillStyle = '#6f7ea3'; gctx.font = `${9*d}px "Share Tech Mono", monospace`; gctx.textAlign = 'center';
+  ['10K','100K','1M','10M','100M','1G'].forEach((t, i) => {
+    const a = a0 + (a1 - a0)*i/5;
+    gctx.fillText(t, cx + Math.cos(a)*(R - 18*d), cy + Math.sin(a)*(R - 18*d) + 3*d);
+  });
+  const an = a0 + (a1 - a0)*frac;
+  gctx.strokeStyle = '#fff'; gctx.lineWidth = 2*d; gctx.shadowColor = alarm ? '#ff003c' : '#00f0ff'; gctx.shadowBlur = 12*d;
+  gctx.beginPath(); gctx.moveTo(cx, cy); gctx.lineTo(cx + Math.cos(an)*(R - 4*d), cy + Math.sin(an)*(R - 4*d)); gctx.stroke();
+  gctx.beginPath(); gctx.arc(cx, cy, 4*d, 0, Math.PI*2); gctx.fillStyle = '#fff'; gctx.fill();
+  gctx.shadowBlur = 0;
+}
+
+/* ---------- inspector ---------- */
+const spark = $('spark'), sctx = spark.getContext('2d');
+function openInspector(n){
+  if (selected) selected.label.classList.remove('sel');
+  selected = n; n.label.classList.add('sel');
+  $('insp').classList.add('on');
+  sizeCanvas(spark);
+  updateInspector();
+  focusNode(n);
+  tone(660, .08, 'sine', .04, 1320);
+}
+function closeInspector(){
+  if (selected) selected.label.classList.remove('sel');
+  selected = null;
+  $('insp').classList.remove('on');
+}
+function updateInspector(){
+  const n = selected;
+  $('iName').textContent = n.name;
+  $('iMeta').textContent = n.ip;
+  $('iKind').textContent = n.kind;
+  const attacked = S.ddos && (n.role === 'gw' || n.role === 'bot');
+  const st = $('iStatus');
+  st.textContent = n.role === 'bot' ? 'HOSTILE' : attacked ? 'UNDER ATTACK' : 'ONLINE';
+  st.className = attacked ? 'status-bad' : 'status-ok';
+  $('iPeers').textContent = n.peers;
+  $('iIn').textContent = fmt(n.inRate);
+  $('iOut').textContent = fmt(n.outRate);
+  $('iTotal').textContent = fmtB(n.total);
+  drawSpark();
+}
+function drawSpark(){
+  const w = spark.width, h = spark.height, d = PR, H = selected.hist;
+  sctx.clearRect(0, 0, w, h);
+  sctx.strokeStyle = 'rgba(0,240,255,.08)'; sctx.lineWidth = 1;
+  for (let i = 1; i < 4; i++){ sctx.beginPath(); sctx.moveTo(0, h*i/4); sctx.lineTo(w, h*i/4); sctx.stroke(); }
+  if (H.length < 2) return;
+  const max = Math.max(1024, ...H.map(([a, b]) => Math.max(a, b)))*1.15;
+  for (const [idx, col] of [[0, '#00f0ff'], [1, '#ff2bd6']]){
+    sctx.beginPath();
+    H.forEach((v, i) => { const x = i/(90-1)*w, y = h - v[idx]/max*(h - 6*d) - 3*d; i ? sctx.lineTo(x, y) : sctx.moveTo(x, y); });
+    sctx.strokeStyle = col; sctx.lineWidth = 1.5*d; sctx.shadowColor = col; sctx.shadowBlur = 8*d; sctx.stroke();
+    sctx.shadowBlur = 0;
+  }
+  sctx.fillStyle = '#00f0ff'; sctx.font = `${9*d}px "Share Tech Mono", monospace`;
+  sctx.fillText('IN', 6*d, 12*d); sctx.fillStyle = '#ff2bd6'; sctx.fillText('OUT', 24*d, 12*d);
+}
+
+/* ---------- camera ---------- */
+let tween = null;
+function flyTo(pos, target, dur = 1.2){
+  tween = {p0:camera.position.clone(), p1:pos.clone(), t0:controls.target.clone(), t1:target.clone(), s:performance.now(), d:REDUCED ? 1 : dur*1000};
+  controls.autoRotate = false;
+}
+function focusNode(n){
+  const dir = n.pos.clone().sub(HOME_TARGET).setY(0);
+  if (dir.lengthSq() < 1) dir.set(0, 0, 1);
+  dir.normalize();
+  const dist = n.role === 'gw' ? 34 : 20;
+  flyTo(n.pos.clone().addScaledVector(dir, dist).add(new THREE.Vector3(0, dist*.45, 0)), n.pos);
+}
+function goHome(){ closeInspector(); flyTo(HOME_POS, HOME_TARGET); setTimeout(() => { controls.autoRotate = !REDUCED; }, 1300); }
+
+/* ---------- picking ---------- */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+function hitAt(x, y){
+  ndc.set(x/innerWidth*2 - 1, -(y/innerHeight)*2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const h = ray.intersectObjects(HITS.filter(o => o.userData.node.alpha > .5), false)[0];
+  return h ? h.object.userData.node : null;
+}
+let down = null;
+canvas.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; });
+canvas.addEventListener('pointerup', e => {
+  if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 6) return;
+  const n = hitAt(e.clientX, e.clientY);
+  if (n) openInspector(n);
+});
+let hoverPending = false;
+canvas.addEventListener('pointermove', e => {
+  if (hoverPending) return;
+  hoverPending = true;
+  requestAnimationFrame(() => {
+    hoverPending = false;
+    const n = hitAt(e.clientX, e.clientY);
+    if (n === hovered) return;
+    if (hovered) hovered.label.classList.remove('hov');
+    hovered = n;
+    if (n) n.label.classList.add('hov');
+    canvas.style.cursor = n ? 'pointer' : '';
+  });
+});
+canvas.addEventListener('pointerdown', () => { controls.autoRotate = false; }, {once:true});
+
+/* ---------- audio (Web Audio 合成) ---------- */
+let AC = null, master = null, soundOn = false;
+function initAudio(){
+  AC = new (window.AudioContext || window.webkitAudioContext)();
+  master = AC.createGain(); master.gain.value = 0; master.connect(AC.destination);
+  const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 240; lp.Q.value = 7;
+  const drone = AC.createGain(); drone.gain.value = .05;
+  lp.connect(drone).connect(master);
+  for (const fr of [55, 55.35, 82.4]){ const o = AC.createOscillator(); o.type = 'sawtooth'; o.frequency.value = fr; o.connect(lp); o.start(); }
+  const lfo = AC.createOscillator(), lg = AC.createGain();
+  lfo.frequency.value = .07; lg.gain.value = 140; lfo.connect(lg).connect(lp.frequency); lfo.start();
+}
+function tone(freq, dur, type = 'square', vol = .03, slideTo){
+  if (!soundOn) return;
+  const t = AC.currentTime, o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  o.connect(g).connect(master); o.start(t); o.stop(t + dur + .02);
+}
+function alarmSound(){
+  tone(520, .32, 'sawtooth', .05, 1040);
+  setTimeout(() => tone(1040, .32, 'sawtooth', .05, 520), 360);
+}
+$('bSound').addEventListener('click', () => {
+  if (!AC) initAudio();
+  soundOn = !soundOn;
+  AC.resume();
+  master.gain.setTargetAtTime(soundOn ? .6 : 0, AC.currentTime, .05);
+  $('bSound').textContent = soundOn ? 'AUDIO: ON' : 'AUDIO: OFF';
+  setPressed($('bSound'), soundOn);
+  tone(1200, .06, 'sine', .04);
+});
+let blipT = 0;
+
+/* ---------- controls ---------- */
+$('bDdos').addEventListener('click', () => { tone(300, .1, 'square', .04, 150); setDDoS(!S.ddos); });
+$('bTorrent').addEventListener('click', () => { tone(900, .06, 'sine', .04); setTorrent(!S.torrent); });
+$('bHome').addEventListener('click', () => { tone(900, .06, 'sine', .04); goHome(); });
+$('inspClose').addEventListener('click', goHome);
+addEventListener('keydown', e => { if (e.key === 'Escape' && selected) goHome(); });
+const filtersEl = $('filters');
+for (const k in PROTO){
+  const b = document.createElement('button');
+  b.className = 'btn pf'; b.style.color = PROTO[k].hex;
+  b.setAttribute('aria-pressed', 'true');
+  b.innerHTML = `<i style="background:${PROTO[k].hex}"></i><span style="color:var(--txt)">${PROTO[k].name}</span>`;
+  b.addEventListener('click', () => {
+    protoOn[k] = !protoOn[k];
+    b.classList.toggle('off', !protoOn[k]); b.setAttribute('aria-pressed', protoOn[k]);
+    tone(protoOn[k] ? 1100 : 700, .05, 'sine', .03);
+  });
+  filtersEl.appendChild(b);
+}
+const speedsEl = $('speeds');
+for (const v of [.5, 1, 2, 4]){
+  const b = document.createElement('button');
+  b.className = 'btn' + (v === 1 ? ' on' : ''); b.textContent = v + '×';
+  b.addEventListener('click', () => {
+    speedMul = v;
+    for (const x of speedsEl.children) x.classList.toggle('on', x === b);
+    tone(800 + v*150, .05, 'sine', .03);
+  });
+  speedsEl.appendChild(b);
+}
+
+/* ---------- resize ---------- */
+function sizeCanvas(cv){ cv.width = Math.max(1, cv.clientWidth*PR); cv.height = Math.max(1, cv.clientHeight*PR); }
+function resize(){
+  camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight, false);
+  composer.setSize(innerWidth, innerHeight);
+  document.documentElement.style.setProperty('--dock', $('dock').offsetHeight + 'px');
+  sizeCanvas(gauge); sizeCanvas(spark);
+  drawGauge(shownTotal);
+}
+addEventListener('resize', resize);
+resize();
+
+/* ---------- frame ---------- */
+const _p = new THREE.Vector3(), _proj = new THREE.Vector3();
+const alarmColor = new THREE.Color('#ff003c'), coreCyan = new THREE.Color('#00f0ff'), coreMag = new THREE.Color('#ff2bd6'), coreWhite = new THREE.Color('#c9fbff');
+let last = performance.now(), simAcc = 0, T = 0, alarmLvl = 0;
+function frame(now){
+  const dt = Math.min(.05, (now - last)/1000); last = now; T += dt;
+  simAcc += dt;
+  while (simAcc >= .2){ simAcc -= .2; simTick(); }
+
+  // nodes: fade, bob, spin, labels
+  for (let i = NODES.length - 1; i >= 0; i--){
+    const n = NODES[i];
+    if (n.alpha !== n.target){
+      n.alpha = n.target > n.alpha ? Math.min(n.target, n.alpha + dt*1.8) : Math.max(n.target, n.alpha - dt*1.8);
+      for (const [m, op] of n.mats) m.opacity = op*n.alpha;
+      if (n.dying && n.alpha <= 0){ removeNode(n); continue; }
+    }
+    updateNodePos(n, T);
+    n.flash = Math.max(0, n.flash - dt*3);
+    if (n.shape){
+      n.shape.rotation.y += dt*(REDUCED ? .1 : .6);
+      n.shape.rotation.x = Math.sin(T*.5 + n.phase)*.3;
+      n.shape.scale.setScalar(1 + n.flash*.35);
+    }
+    _proj.copy(n.pos); _proj.y += n.role === 'gw' ? 9 : n.size*2.2;
+    _proj.project(camera);
+    const vis = (n.showLabel || n === selected || n === hovered) && _proj.z < 1 && n.alpha > .05;
+    n.label.style.display = vis ? '' : 'none';
+    if (vis){
+      n.label.style.transform = `translate(${(_proj.x*.5 + .5)*innerWidth}px,${(-_proj.y*.5 + .5)*innerHeight}px) translate(-50%,-100%)`;
+      n.label.style.opacity = n.alpha;
+    }
+  }
+
+  // gateway core
+  alarmLvl += ((S.ddos ? 1 : 0) - alarmLvl)*Math.min(1, dt*3);
+  const core = N.gw.core, spin = REDUCED ? .2 : 1;
+  core.ico.rotation.y += dt*.5*spin; core.ico.rotation.x += dt*.2*spin;
+  core.shell.rotation.y -= dt*.3*spin; core.shell.rotation.z += dt*.15*spin;
+  core.ring1.rotation.z += dt*.4*spin; core.ring2.rotation.z -= dt*.25*spin;
+  const beat = 1 + Math.sin(T*(S.ddos ? 9 : 2.2))*.08 + N.gw.flash*.25;
+  core.sphere.scale.setScalar(beat);
+  core.ico.material.color.copy(coreCyan).lerp(alarmColor, alarmLvl);
+  core.shell.material.color.copy(coreMag).lerp(alarmColor, alarmLvl);
+  core.sphere.material.color.copy(coreWhite).lerp(alarmColor, alarmLvl*.8);
+  core.ring1.material.color.copy(coreCyan).lerp(alarmColor, alarmLvl);
+  gridMat.uniforms.uAlarm.value = alarmLvl*.85;
+  gridMat.uniforms.uTime.value = T;
+  bloom.strength = (REDUCED ? .8 : 1.15) + alarmLvl*.4;
+
+  // flows: ttl + spawning
+  for (const [id, f] of flows){
+    f.age += dt;
+    if (f.age > f.ttl){ flows.delete(id); continue; }
+    if (!protoOn[f.proto] || f.upPath.some(([a, b]) => a.dead || b.dead)) continue;
+    f.cu += particleRate(f.up)*dt*speedMul;
+    f.cd += particleRate(f.down)*dt*speedMul;
+    while (f.cu >= 1){ f.cu -= 1; spawn(f, f.upPath); }
+    while (f.cd >= 1){ f.cd -= 1; spawn(f, f.downPath); }
+  }
+
+  // particles
+  let k = 0;
+  for (let i = heads.length - 1; i >= 0; i--){
+    const h = heads[i];
+    const si = Math.min(h.path.length - 1, Math.floor(h.u));
+    const [a, b] = h.path[si];
+    if (a.dead || b.dead){ heads[i] = heads[heads.length - 1]; heads.pop(); continue; }
+    h.u += h.sp*speedMul*dt/(a.pos.distanceTo(b.pos)*1.1 + 1);
+    if (h.u >= h.path.length){
+      const dest = h.path[h.path.length - 1][1];
+      dest.flash = 1; arrivals++;
+      heads[i] = heads[heads.length - 1]; heads.pop(); continue;
+    }
+    if (!protoOn[h.p]) continue;
+    for (let t = 0; t < PPH; t++){
+      samplePath(h.path, Math.max(0, h.u - t*.03), _p);
+      const fade = Math.pow(1 - t/PPH, 1.6);
+      pPos[k*3] = _p.x; pPos[k*3+1] = _p.y; pPos[k*3+2] = _p.z;
+      pCol[k*3] = h.c.r*fade; pCol[k*3+1] = h.c.g*fade; pCol[k*3+2] = h.c.b*fade;
+      pSize[k] = h.sz*(t ? .75*fade + .25 : 1);
+      k++;
+    }
+  }
+  pGeo.setDrawRange(0, k);
+  pGeo.attributes.position.needsUpdate = true;
+  pGeo.attributes.acol.needsUpdate = true;
+  pGeo.attributes.asize.needsUpdate = true;
+
+  // links
+  for (const s of segs.values()){
+    updateSegGeometry(s);
+    const target = .07 + clamp(Math.log10(s.load + 1)/7.5, 0, 1)*.55;
+    s.shown += (target - s.shown)*Math.min(1, dt*4);
+    s.line.material.opacity = s.shown*Math.min(s.a.alpha, s.b.alpha);
+    s.line.material.color.lerp(s.color, Math.min(1, dt*3));
+  }
+
+  // dust drift
+  if (!REDUCED){ dust.rotation.y += dt*.01; dust.position.y = Math.sin(T*.2)*2; }
+
+  // packet blips
+  blipT += dt;
+  if (soundOn && blipT > .09 && arrivals > 0){ blipT = 0; tone(rand(1700, 2600), .025, 'square', .012); }
+  arrivals = 0;
+
+  // camera tween
+  if (tween){
+    const q = Math.min(1, (now - tween.s)/tween.d), e = q < .5 ? 4*q*q*q : 1 - Math.pow(-2*q + 2, 3)/2;
+    camera.position.lerpVectors(tween.p0, tween.p1, e);
+    controls.target.lerpVectors(tween.t0, tween.t1, e);
+    if (q >= 1) tween = null;
+  }
+  controls.update();
+  composer.render();
+  requestAnimationFrame(frame);
+}
+
+log('sys', 'SYS', 'CYBER-GRID ONLINE · 模拟数据模式');
+log('sys', 'SYS', `已载入 ${NODES.length} 个节点，聚合窗口 200ms`);
+persistent();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
