@@ -9,3 +9,4 @@ dist/
 .env
 config.local.*
 *.egg-info/
+backend/data/

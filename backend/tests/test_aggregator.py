@@ -22,7 +22,7 @@ class ClassifyTest(unittest.TestCase):
 
     def test_service_port(self):
         self.assertEqual(service_port(50000, 443), 443)
-        self.assertEqual(service_port(443, 50000), 443)  # 本机做服务端
+        self.assertEqual(service_port(443, 50000), 443)  # this machine is the server
         self.assertEqual(service_port(50000, 22), 22)
         self.assertEqual(service_port(51000, 52000), 52000)
 

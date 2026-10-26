@@ -1,8 +1,8 @@
-# 发布到 GitHub 与在线演示
+# Publishing to GitHub and the online demo
 
-## 1. 推送到 GitHub
+## 1. Push to GitHub
 
-在 GitHub 网页上新建一个**空仓库**（这里是 `vela`），不要勾选添加 README、.gitignore 或 License（本地已经有了）。然后在本地：
+Create an **empty repository** on GitHub (here, `vela`). Don't add a README, .gitignore or license; they already exist locally. Then, locally:
 
 ```bash
 cd ~/project/vela
@@ -10,26 +10,28 @@ git remote add origin https://github.com/silchenn/vela.git
 git push -u origin main
 ```
 
-## 2. 开启 GitHub Pages（在线体验）
+## 2. Enable GitHub Pages (online demo)
 
-仓库里已经带了自动部署配置 `.github/workflows/pages.yml`，它会把 `frontend/` 目录发布成网页。
+The repository already includes a deployment workflow, `.github/workflows/pages.yml`, which publishes the `frontend/` directory as a website.
 
-1. 打开仓库页面 → **Settings** → 左侧 **Pages**。
-2. **Build and deployment → Source** 选择 **GitHub Actions**。
-3. 到 **Actions** 标签页，找到 "Deploy demo to GitHub Pages"：
-   - 如果还没运行，点 **Run workflow** 手动触发一次；
-   - 之后每次推送修改 `frontend/` 都会自动重新部署。
-4. 运行成功后，演示地址是：
+1. Open the repository → **Settings** → **Pages** in the sidebar.
+2. Under **Build and deployment → Source**, choose **GitHub Actions**.
+3. Go to the **Actions** tab and find "Deploy demo to GitHub Pages":
+   - if it hasn't run yet, click **Run workflow** to trigger it once;
+   - after that, every push that changes `frontend/` redeploys automatically.
+4. Once it succeeds, the demo is at:
 
    ```
    https://silchenn.github.io/vela/
    ```
 
-5. README 的「在线体验」链接已经指向这个地址；再把它填到仓库首页右侧 **About → Website**。
+5. The README's "Live demo" link already points there; also add it under **About → Website** on the repository home page.
 
-> 免费账户的 GitHub Pages 只支持**公开仓库**。
+> On free accounts, GitHub Pages only works for **public repositories**.
+>
+> The online demo is an HTTPS page, so browsers won't let it connect to a LAN `ws://` backend. Live mode only works with pages opened locally.
 
-## 3. 让仓库首页更好看（可选）
+## 3. Polish the repository page (optional)
 
-- **About** 里写一句简介，并添加 Topics：`network-security`、`ids`、`threejs`、`visualization`、`mitre-attack`。
-- 把演示动图放到 `docs/assets/demo.gif`，替换 README 顶部的 TODO 注释。
+- Write a one-line description under **About** and add topics: `network-security`, `ids`, `threejs`, `visualization`, `mitre-attack`.
+- Put a demo GIF at `docs/assets/demo.gif` and replace the TODO comment at the top of the README.

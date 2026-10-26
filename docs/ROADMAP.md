@@ -1,79 +1,79 @@
-# 项目定位与路线图
+# Positioning and roadmap
 
-> 记录于 2026-10-21。这是规划阶段讨论的结论，开发时以此为准，有变化就回来更新。
+> Written 2026-10-21. These are the conclusions of the planning discussion and the reference during development; come back and update this when things change.
 
-## 1. 项目定位
+## 1. Positioning
 
-**不是"流量可视化"，而是"可视化的家庭网络入侵检测系统"。**
+**Not "traffic visualization", but "a visual intrusion detection system for the home network".**
 
-这是网络安全方向的第一部作品。在面试官眼里，酷炫的前端只是加分项，真正体现安全功底的是**检测逻辑**：
-每一条红色航道背后，都要有能讲清楚的检测原理、阈值依据和误报处理。
+This is a first project in network security. To an interviewer, a flashy frontend is only a bonus; what really shows security skill is the **detection logic**:
+behind every red lane there must be a detection principle, a justified threshold and a false-positive story you can explain clearly.
 
-## 2. 可行性要点（避坑清单）
+## 2. Feasibility notes (pitfall checklist)
 
-### 数据采集
-- **本机网卡只能看到本机流量。** 想看全屋，需要在网关采集：
-  | 方案 | 可见范围 | 难度 |
+### Data capture
+- **This machine's interface only sees this machine's traffic.** To see the whole home, capture at the gateway:
+  | Option | Visibility | Difficulty |
   |---|---|---|
-  | 本机网卡抓包 | 本机流量 | ⭐ 适合 MVP |
-  | OpenWrt 软路由 / Linux 网关 | 全屋进出外网流量 | ⭐⭐ **推荐** |
-  | 交换机端口镜像 | 含局域网内部流量 | ⭐⭐⭐ |
-- 有 Linux 网关时，优先读 **conntrack** 连接跟踪表：自带五元组和字节计数，几乎零开销。
-- **Scapy 很慢**，只适合原型；正式版用 Go（gopacket）或 eBPF。
-- **不要逐包推给前端**：后端按"流"聚合，每 100–250ms 推一次。
-- 按端口判断协议只是近似（443 也可能是 QUIC/UDP），做配色够用，不能当精确分析。
-- IP → "GitHub" 这样的名字：抓 DNS 响应维护"域名→IP"映射 + 离线 ASN 库（GeoLite2 ASN）合并同一公司的 IP。反向 DNS 基本没用。
-- 宕机检测：定时 ping / ARP 探测。
-- 抓包需要 root；Windows 需要 Npcap。
+  | Capture on this machine's interface | This machine's traffic | ⭐ good for an MVP |
+  | OpenWrt soft router / Linux gateway | All devices' internet traffic | ⭐⭐ **recommended** |
+  | Switch port mirroring | Including LAN-internal traffic | ⭐⭐⭐ |
+- With a Linux gateway, prefer reading the **conntrack** table: it already has 5-tuples and byte counters at almost zero cost.
+- **Scapy is slow** and only suitable for a prototype; production should use Go (gopacket) or eBPF.
+- **Don't push individual packets to the frontend**: aggregate into flows on the backend and push every 100–250 ms.
+- Inferring the protocol from the port is only an approximation (443 may also be QUIC/UDP); good enough for colors, not for precise analysis.
+- Names like IP → "GitHub": capture DNS answers to maintain a domain→IP map, plus an offline ASN database (e.g. iptoasn / GeoLite2 ASN) to merge one company's IPs. Reverse DNS is mostly useless.
+- Outage detection: periodic ping / ARP probes.
+- Packet capture needs root (or BPF access on macOS); Windows needs Npcap.
 
-### 传输
-- WebSocket 只监听局域网地址，并加 token。**这个服务暴露全屋连接记录，绝不开到公网。**
+### Transport
+- The WebSocket only listens on LAN addresses and requires a token. **This service exposes every connection in the house; never expose it to the internet.**
 
-### 渲染
-- 粒子交给 GPU（着色器 + 贝塞尔曲线）；4K 大屏上辉光要留降级选项。
-- **节点爆炸**是最大的视觉问题：按 ASN 合并节点、无流量节点淡出回收、只把流量前 N 名画成恒星。
-- 布局用分层同心球（本机/网关中心 → 局域网内环 → 外网外壳），不用纯力导向。
-- **调视觉的时间通常比写功能多。**
+### Rendering
+- Hand particles to the GPU (shaders + Bézier curves); keep a fallback for bloom on 4K displays.
+- **Node explosion** is the biggest visual problem: merge nodes by ASN, fade out and recycle idle nodes, and only draw the top N by traffic as stars.
+- Use a layered concentric layout (this machine/gateway at the center → LAN inner ring → internet outer shell) rather than a pure force-directed one.
+- **Tuning visuals usually takes longer than writing features.**
 
-## 3. 安全能力：检测点
+## 3. Security capabilities: detections
 
-按难度排序，详细设计见 [DETECTIONS.md](DETECTIONS.md)：
+Ordered by difficulty; detailed design in [DETECTIONS.md](DETECTIONS.md):
 
-1. 端口扫描检测（T1046）
-2. 新设备接入告警（T1200）
-3. 威胁情报关联（FireHOL、abuse.ch 黑名单）
-4. C2 信标检测（T1071）—— 含金量最高
-5. DNS 隧道检测（T1071.004）
-6. 数据外泄检测（T1048 / T1041）
+1. Port scan detection (T1046)
+2. New device alerts (T1200)
+3. Threat-intel correlation (FireHOL, abuse.ch blocklists)
+4. C2 beacon detection (T1071) — the most valuable
+5. DNS tunneling detection (T1071.004)
+6. Data exfiltration detection (T1048 / T1041)
 
-**每条告警都标注 MITRE ATT&CK 技术编号。**
+**Every alert is tagged with its MITRE ATT&CK technique ID.**
 
-## 4. 数据源"行业化"
+## 4. "Industry-grade" data sources
 
-除了自己写抓包，后端要支持接入 **Suricata（eve.json）** 和 **Zeek（conn.log / dns.log）**。
-它们是企业里真实在用的工具，作品里出现它们，说明你了解行业生态。
-建议设计成"适配器"模式：不同数据源 → 统一事件格式 → 检测引擎 → 前端。
+Besides our own packet capture, the backend should ingest **Suricata (eve.json)** and **Zeek (conn.log / dns.log)**.
+These are tools actually used in companies; having them in the project shows you understand the industry ecosystem.
+Design it as adapters: different sources → one unified event format → detection engine → frontend.
 
-## 5. 路线图
+## 5. Roadmap
 
-| 阶段 | 内容 | 预计 |
+| Stage | Scope | Estimate |
 |---|---|---|
-| **M0 原型** ✅ | 前端 + 模拟数据，五个演练场景 | 已完成 |
-| **M1 真实数据** | 本机抓包 / conntrack → 聚合 → WebSocket；前端切换到真实数据 | 1–2 个周末 |
-| **M2 第一批检测** | 端口扫描 + 新设备接入 + 告警面板（含 ATT&CK 编号） | 1–2 周 |
-| **M3 节点治理** | DNS 映射、ASN 合并、节点生命周期 | 2–3 周 |
-| **M4 高级检测** | 信标、DNS 隧道、外泄基线、威胁情报 | 1 个月 |
-| **M5 生态接入** | Suricata / Zeek 适配器 | 1–2 周 |
-| **M6 发布打磨** | 动图、攻防演示视频、文档、音效、大屏优化 | 持续 |
+| **M0 Prototype** ✅ | Frontend + simulated data, five drill scenarios | Done |
+| **M1 Real data** ✅ | Local capture / conntrack → aggregation → WebSocket; frontend switches to real data | Done (local capture) |
+| **M2 First detections** | Port scan + new device + alert panel (with ATT&CK IDs) | 1–2 weeks |
+| **M3 Node management** | DNS mapping, ASN merging, node lifecycle (naming via DNS / SNI / ASN already done) | 2–3 weeks |
+| **M4 Advanced detections** | Beaconing, DNS tunneling, exfiltration baselines, threat intel | 1 month |
+| **M5 Ecosystem** | Suricata / Zeek adapters | 1–2 weeks |
+| **M6 Release polish** | GIF, attack/defense demo video, docs, sound, big-screen tuning | Ongoing |
 
-开发原则：**前后端解耦，前端永远保留模拟数据模式**。
+Principle: **keep frontend and backend decoupled, and always keep the frontend's simulated-data mode**.
 
-## 6. GitHub 发布清单
+## 6. GitHub release checklist
 
-- [ ] README 顶部放动图，三秒内抓住眼球
-- [ ] 模拟数据模式一键体验，别人不用配置抓包环境
-- [ ] DETECTIONS.md：每条规则的逻辑、阈值怎么定、误报怎么处理
-- [ ] 攻防演示：用 nmap 扫描自己的实验网络，录下红色航道亮起的过程
-- [ ] README 写明使用边界：只在自己的网络和设备上抓包和扫描
-- [x] 开源许可证：MIT
-- [ ] 开启 GitHub Pages 在线演示（步骤见 [DEPLOY.md](DEPLOY.md)）
+- [ ] A GIF at the top of the README that grabs attention within three seconds
+- [ ] One-click simulated mode so others don't need a capture setup
+- [ ] DETECTIONS.md: each rule's logic, how thresholds were set, how false positives are handled
+- [ ] Attack/defense demo: scan your own lab network with nmap and record the red lanes lighting up
+- [ ] README states the intended use: only capture and scan your own networks and devices
+- [x] Open-source license: MIT
+- [x] GitHub Pages online demo (steps in [DEPLOY.md](DEPLOY.md))

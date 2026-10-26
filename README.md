@@ -1,66 +1,73 @@
 # Vela
 
-> 可视化的家庭网络入侵检测系统 —— 把网络流量变成一片可以观测的宇宙。
+> A visual intrusion detection system for your home network: network traffic rendered as a universe you can observe.
 
-- **恒星**：路由器、本机、NAS、云服务器、常用外网服务
-- **航道**：IP 之间的连接；流光的速度和密度对应传输速率
-- **颜色**：HTTPS 青 · HTTP 白 · DNS 紫 · QUIC 琥珀 · 异常红
-- **告警**：端口扫描、新设备接入、信标回连、DNS 隧道、数据外泄……每条告警标注 MITRE ATT&CK 编号
+- **Stars**: your router, this machine, NAS, cloud servers, everyday internet services
+- **Lanes**: connections between IPs; the speed and density of the light trails follow the transfer rate
+- **Colors**: HTTPS cyan · HTTP white · DNS violet · QUIC amber · alerts red
+- **Alerts**: port scans, new devices, beaconing, DNS tunneling, data exfiltration… each tagged with its MITRE ATT&CK technique ID
 
-<!-- TODO: 在这里放一张 3 秒内抓住眼球的动图 docs/assets/demo.gif -->
+<!-- TODO: put an eye-catching 3-second demo GIF here: docs/assets/demo.gif -->
 
-## 快速体验（模拟数据模式）
+## Quick start (simulated data)
 
-**在线体验**：<https://silchenn.github.io/vela/>（开启方法见 [docs/DEPLOY.md](docs/DEPLOY.md)）
+**Live demo**: <https://silchenn.github.io/vela/> (setup in [docs/DEPLOY.md](docs/DEPLOY.md))
 
-前端目前有两种视觉风格，最终用哪个还没定，页面左上角可以互相切换：
+The frontend currently comes in two visual styles; the final one hasn't been picked yet. Switch between them from the top-left corner of either page:
 
-| 风格 | 文件 | 在线地址 |
+| Style | File | Online |
 |---|---|---|
-| 星际航道 | `frontend/index.html` | <https://silchenn.github.io/vela/> |
-| 赛博朋克 | `frontend/cyber.html` | <https://silchenn.github.io/vela/cyber.html> |
+| Star Lanes | `frontend/index.html` | <https://silchenn.github.io/vela/> |
+| Cyberpunk | `frontend/cyber.html` | <https://silchenn.github.io/vela/cyber.html> |
 
-**本地运行**：不需要安装任何依赖，也不需要抓包环境。
+**Run locally**: no dependencies and no packet-capture setup needed.
 
 ```bash
 git clone https://github.com/silchenn/vela.git
 ```
 
-然后用浏览器打开 `frontend/index.html`（直接双击即可；macOS 也可以在终端运行 `open frontend/index.html`）。
+Then open `frontend/index.html` in a browser (double-click it, or run `open frontend/index.html` on macOS).
 
-> 页面会从 jsDelivr CDN 加载 Three.js，首次打开需要联网。
+> The pages load Three.js from the jsDelivr CDN, so the first load needs an internet connection.
 
-星际航道版可以演练「下载大文件 / 4K 视频 / DNS 风暴 / 端口扫描 / NAS 宕机」五个场景；赛博朋克版可以演练「DDoS 攻击 / 高负载 Torrent」。两版都可以点击节点追踪它的进出流量。
+The Star Lanes page has five drills: big download, 4K video, DNS storm, port scan and NAS outage. The Cyberpunk page has a DDoS attack and a high-load torrent. On both, click a node to follow its inbound and outbound traffic.
 
-## 目录结构
+## Live mode (real traffic)
+
+Start the backend (see [backend/README.md](backend/README.md)) and open one of the frontend links it prints. The pages then show this machine's real connections instead of simulated ones.
+
+## Repository layout
 
 ```
 vela/
-├── frontend/          3D 可视化前端（Three.js 单文件原型）
-│   ├── index.html     星际航道风格
-│   └── cyber.html     赛博朋克风格
-├── backend/           数据采集与推送（Python，用法见 backend/README.md）
+├── frontend/           3D visualization (Three.js single-file prototypes)
+│   ├── index.html      Star Lanes style
+│   ├── cyber.html      Cyberpunk style
+│   └── live.js         shared live-data layer (WebSocket → scene)
+├── backend/            capture, aggregation and push (Python, see backend/README.md)
 └── docs/
-    ├── ROADMAP.md     项目定位、路线图与开发建议
-    ├── DETECTIONS.md  检测规则设计（含 ATT&CK 映射）
-    ├── ARCHITECTURE.md 架构、数据采集位置与前后端消息格式
-    └── DEPLOY.md      发布到 GitHub 与在线演示
+    ├── ROADMAP.md      positioning, roadmap and development notes
+    ├── DETECTIONS.md   detection rule design (with ATT&CK mapping)
+    ├── ARCHITECTURE.md architecture, capture points and message formats
+    └── DEPLOY.md       publishing to GitHub and the online demo
 ```
 
-## 状态
+## Status
 
-| 模块 | 状态 |
+| Module | Status |
 |---|---|
-| 前端原型（模拟数据） | ✅ 完成 |
-| 后端采集：本机抓包 → 聚合 → WebSocket | ✅ 完成 |
-| 后端采集：网关 conntrack | ⬜ 计划中 |
-| 检测引擎 | ⬜ 计划中 |
-| Suricata / Zeek 接入 | ⬜ 计划中 |
+| Frontend prototype (simulated data) | ✅ Done |
+| Backend capture: local packet capture → aggregation → WebSocket | ✅ Done |
+| Frontend live mode | ✅ Done |
+| Node naming: DNS / TLS SNI / ASN | ✅ Done |
+| Backend capture: gateway conntrack | ⬜ Planned |
+| Detection engine | ⬜ Planned |
+| Suricata / Zeek integration | ⬜ Planned |
 
-## 使用边界
+## Intended use
 
-本项目仅用于监控**你自己拥有或获得明确授权**的网络和设备。抓包、端口扫描等攻防演示请只在自己的实验环境中进行。
+Use this project only to monitor networks and devices **you own or are explicitly authorized to monitor**. Run packet captures, port scans and other attack/defense demos only in your own lab environment.
 
-## 许可证
+## License
 
 [MIT](LICENSE)

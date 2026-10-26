@@ -1,1 +1,1 @@
-"""Vela 后端：数据采集、聚合与推送。"""
+"""Vela backend: capture, aggregation and push."""

@@ -1,86 +1,93 @@
-# 检测规则设计
+# Detection rule design
 
-每条规则按同一个模板写：**原理 → 判定逻辑 → 初始阈值 → 误报来源 → 验证方法**。
-阈值都是起点，要用自己网络的真实数据回放来调。
+Every rule follows the same template: **principle → decision logic → initial threshold → false-positive sources → how to verify**.
+All thresholds are starting points, to be tuned by replaying real data from your own network.
 
-| # | 规则 | ATT&CK | 难度 | 状态 |
+| # | Rule | ATT&CK | Difficulty | Status |
 |---|---|---|---|---|
-| D1 | 端口扫描 | T1046 Network Service Discovery | ⭐ | ⬜ |
-| D2 | 新设备接入 | T1200 Hardware Additions | ⭐ | ⬜ |
-| D3 | 威胁情报命中 | （按情报类别映射） | ⭐⭐ | ⬜ |
-| D4 | C2 信标 | T1071 Application Layer Protocol | ⭐⭐⭐ | ⬜ |
-| D5 | DNS 隧道 | T1071.004 DNS | ⭐⭐⭐ | ⬜ |
-| D6 | 数据外泄 | T1048 / T1041 | ⭐⭐⭐ | ⬜ |
+| D1 | Port scan | T1046 Network Service Discovery | ⭐ | ⬜ |
+| D2 | New device | T1200 Hardware Additions | ⭐ | ⬜ |
+| D3 | Threat-intel hit | (mapped per intel category) | ⭐⭐ | ⬜ |
+| D4 | C2 beaconing | T1071 Application Layer Protocol | ⭐⭐⭐ | ⬜ |
+| D5 | DNS tunneling | T1071.004 DNS | ⭐⭐⭐ | ⬜ |
+| D6 | Data exfiltration | T1048 / T1041 | ⭐⭐⭐ | ⬜ |
 
 ---
 
-## D1 端口扫描 · T1046
+## D1 Port scan · T1046
 
-- **原理**：扫描器会在短时间内触碰大量端口（纵向）或大量主机的同一端口（横向）。
-- **判定**：滑动窗口内，同一源 IP
-  - 纵向：访问同一目标的不同端口数 ≥ 阈值；
-  - 横向：访问不同目标主机的同一端口数 ≥ 阈值；
-  - 加权：失败连接（RST、无响应的 SYN）占比高，置信度更高。
-- **初始阈值**：60 秒内 ≥ 20 个不同端口，或 ≥ 15 台不同主机。
-- **误报**：P2P 软件、游戏、局域网发现协议（mDNS、SSDP），需要白名单。
-- **验证**：在自己的实验网络里用 `nmap -sS` 和 `nmap -sT` 各扫一次，对比检出情况。
+- **Principle**: a scanner touches many ports on one host (vertical) or the same port on many hosts (horizontal) within a short time.
+- **Decision**: within a sliding window, for one source IP:
+  - vertical: number of distinct ports on one target ≥ threshold;
+  - horizontal: number of distinct target hosts on one port ≥ threshold;
+  - weighting: a high share of failed connections (RST, unanswered SYN) raises confidence.
+- **Initial threshold**: ≥ 20 distinct ports or ≥ 15 distinct hosts within 60 seconds.
+- **False positives**: P2P software, games, LAN discovery protocols (mDNS, SSDP); these need an allowlist.
+- **Verify**: scan your own lab network once with `nmap -sS` and once with `nmap -sT`, and compare what gets detected.
 
-## D2 新设备接入 · T1200
+## D2 New device · T1200
 
-- **原理**：局域网出现从未见过的 MAC 地址。
-- **判定**：维护已知设备表（MAC、首次出现时间、厂商 OUI）；新 MAC 第一次出现时告警，前端"诞生一颗新恒星"并闪烁。
-- **误报**：手机的 **MAC 地址随机化**会让同一台手机看起来像新设备。可以结合 DHCP 主机名和 OUI 的"本地管理位"降级处理。
-- **验证**：让一台新设备连上 Wi-Fi。
+- **Principle**: a never-before-seen MAC address shows up on the LAN.
+- **Decision**: keep a table of known devices (MAC, first seen, vendor OUI); alert the first time a new MAC appears, and the frontend "births a new star" that flashes.
+- **False positives**: phones' **MAC address randomization** makes the same phone look like a new device. Downgrade using the DHCP hostname and the OUI's "locally administered" bit.
+- **Verify**: connect a new device to the Wi-Fi.
 
-## D3 威胁情报关联
+## D3 Threat-intel correlation
 
-- **原理**：外网 IP 或域名命中公开黑名单。
-- **数据源**：FireHOL Level 1、abuse.ch（Feodo Tracker、URLhaus）。定时拉取，本地缓存。
-- **判定**：连接的对端 IP 或 DNS 查询的域名命中 → 对应恒星染红。
-- **误报**：黑名单里有过期条目，CDN 的共享 IP 也可能误伤。告警里要标明来源列表和更新时间。
-- **验证**：解析或 ping 情报源提供的测试条目（**不要真的访问恶意站点**）。
+- **Principle**: an external IP or domain matches a public blocklist.
+- **Sources**: FireHOL Level 1, abuse.ch (Feodo Tracker, URLhaus). Pulled periodically and cached locally.
+- **Decision**: the peer IP of a connection, or a domain in a DNS query, matches → that star turns red.
+- **False positives**: blocklists contain stale entries, and shared CDN IPs can be collateral damage. Alerts must name the source list and its update time.
+- **Verify**: resolve or ping the test entries the intel source provides (**never actually visit malicious sites**).
 
-## D4 C2 信标 · T1071
+### Idea: direct-to-IP connections (candidate rule)
 
-- **原理**：恶意软件常按固定间隔回连控制服务器，连接间隔异常规律，人类行为则是随机的。
-- **判定**：对同一（内部主机，外部目标）对，收集最近 N 次连接的时间间隔：
-  - 间隔的变异系数（标准差 / 均值）很低 → 规律；
-  - 每次传输字节数也很接近 → 加分；
-  - 持续时间够长（例如 ≥ 1 小时、≥ 20 次）。
-- **初始阈值**：变异系数 < 0.1，且 ≥ 20 次。
-- **误报**：系统更新检查、NTP、云同步、IoT 心跳，都很规律！需要白名单 + 威胁情报交叉确认。这是这条规则最值得在文档里展开讨论的地方。
-- **验证**：写一个小脚本，每 30 秒（加 ±5% 抖动）访问自己的 VPS。
-- **参考**：RITA（Active Countermeasures）的信标评分思路。
+- **Principle**: legitimate software almost always looks up a domain before connecting; malware often hard-codes its C2 address as an IP, so there's no DNS query beforehand, and often no SNI in the TLS handshake either.
+- **Decision**: the destination IP of an outbound connection has neither a passive-DNS name nor an SNI (the node's `name_source` is `asn` or `null`), and it's a destination not seen before.
+- **False positives**: DNS cache hits, long-lived connections opened before the backend started, and encrypted DNS all produce "no DNS seen". This needs a **warm-up period** (no alerts for the first few minutes after startup) and should only judge connections opened after startup (where the SYN was seen).
+- **Verify**: `curl https://<IP>` directly, compared with `curl https://<domain>`.
 
-## D5 DNS 隧道 · T1071.004
+## D4 C2 beaconing · T1071
 
-- **原理**：把数据编码进子域名，通过 DNS 查询偷偷传出去。
-- **特征**：
-  - 子域名很长（例如 > 50 个字符）；
-  - 字符熵值高（香农熵 > 4）；
-  - 同一父域名下的唯一子域名数量暴增；
-  - TXT、NULL 等不常见记录类型占比高。
-- **误报**：CDN 和反垃圾邮件服务也会用长且随机的子域名，需要按父域名建白名单。
-- **验证**：在实验环境里用 dnscat2 或 iodine 搭一条隧道（**只在自己的网络里**）。
+- **Principle**: malware often calls back to its command server at fixed intervals, so connection intervals are unusually regular, while human activity is random.
+- **Decision**: for each (internal host, external destination) pair, collect the intervals between the last N connections:
+  - a very low coefficient of variation (stddev / mean) → regular;
+  - near-identical byte counts per connection → bonus;
+  - sustained long enough (e.g. ≥ 1 hour, ≥ 20 connections).
+- **Initial threshold**: coefficient of variation < 0.1 and ≥ 20 connections.
+- **False positives**: OS update checks, NTP, cloud sync and IoT heartbeats are all very regular! This needs an allowlist plus threat-intel cross-checks, and it's the part of this rule most worth discussing in depth in the docs.
+- **Verify**: a small script that hits your own VPS every 30 seconds (with ±5% jitter).
+- **Reference**: the beacon scoring approach of RITA (Active Countermeasures).
 
-## D6 数据外泄 · T1048 / T1041
+## D5 DNS tunneling · T1071.004
 
-- **原理**：设备上行流量突然远超自己的历史基线。
-- **判定**：为每台设备按小时建立上行字节基线（均值 + 标准差，或中位数 + MAD），当前值 > 基线 + k 倍离散度时告警；对首次出现的外部目标加权。
-- **初始阈值**：k = 4，且绝对值 > 100 MB/小时。
-- **误报**：云备份（NAS → VPS）、上传视频。用"已知备份目标"白名单处理。
-- **验证**：从一台设备向一个新目标上传 1 GB 文件。
+- **Principle**: data is encoded into subdomains and smuggled out through DNS queries.
+- **Signals**:
+  - very long subdomains (e.g. > 50 characters);
+  - high character entropy (Shannon entropy > 4);
+  - a surge in unique subdomains under one parent domain;
+  - a high share of unusual record types such as TXT and NULL.
+- **False positives**: CDNs and anti-spam services also use long random subdomains; allowlist by parent domain.
+- **Verify**: set up a tunnel with dnscat2 or iodine in a lab (**only on your own network**).
+
+## D6 Data exfiltration · T1048 / T1041
+
+- **Principle**: a device's upload traffic suddenly far exceeds its own historical baseline.
+- **Decision**: build an hourly upload-bytes baseline per device (mean + stddev, or median + MAD) and alert when the current value > baseline + k × dispersion; weight destinations seen for the first time.
+- **Initial threshold**: k = 4 and an absolute value > 100 MB/hour.
+- **False positives**: cloud backups (NAS → VPS), video uploads. Handle with a "known backup destinations" allowlist.
+- **Verify**: upload a 1 GB file from one device to a new destination.
 
 ---
 
-## 告警消息格式
+## Alert message format
 
 ```json
 {
   "type": "alert",
   "ts": 1792564110000,
   "rule": "D1",
-  "title": "端口扫描",
+  "title": "Port scan",
   "attack": ["T1046"],
   "severity": "high",
   "src": "45.155.205.233",
@@ -89,4 +96,4 @@
 }
 ```
 
-`evidence` 字段要能让人看懂"为什么判定为异常"，这也是作品里最能体现思路的地方。
+The `evidence` field must let a person understand *why* something was judged abnormal; that's where the project shows its thinking most clearly.

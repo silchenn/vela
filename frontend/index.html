@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -60,7 +60,8 @@ body{background:var(--void);color:var(--ink);font-family:var(--f-body);overflow:
 .counts{display:flex;justify-content:space-between;font-size:12px;color:var(--dim);border-top:1px solid var(--edge);padding-top:8px}
 .counts b{font-family:var(--f-mono);color:var(--https);font-weight:500;margin-right:3px}
 
-.bl{left:max(16px,env(safe-area-inset-left,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));width:272px;padding:14px 14px 12px;display:flex;flex-direction:column;gap:10px}
+.bl{left:max(16px,env(safe-area-inset-left,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));width:272px;padding:14px 14px 12px;display:flex;flex-direction:column;gap:10px;
+  max-height:calc(100vh - 140px - env(safe-area-inset-top,0px));overflow-y:auto;scrollbar-width:none}
 .scen{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .btn{appearance:none;font:inherit;color:var(--ink);background:rgba(255,255,255,.03);border:1px solid var(--edge);border-radius:7px;padding:8px 9px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:2px;transition:border-color .2s,background .2s}
 .btn:hover{border-color:rgba(110,160,220,.4)}
@@ -83,6 +84,14 @@ body{background:var(--void);color:var(--ink);font-family:var(--f-body);overflow:
 .row .btn{flex:1;flex-direction:row;align-items:center;justify-content:center;font-size:12px;padding:7px}
 .row .btn .t::before{display:none}
 .hint{font-size:11px;color:var(--faint)}
+.src{display:flex;gap:6px}
+.src input{flex:1;min-width:0;font-family:var(--f-mono);font-size:11px;color:var(--ink);background:rgba(0,0,0,.3);border:1px solid var(--edge);border-radius:7px;padding:7px 8px}
+.src input:focus-visible{outline:2px solid var(--https);outline-offset:1px}
+.src .btn{flex-direction:row;align-items:center;font-size:12px;padding:7px 10px}
+.src .btn .t::before{display:none}
+#liveState{font-family:var(--f-mono);font-size:11px;color:var(--dim);flex:1;align-self:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#liveState.open{color:var(--https)} #liveState.bad{color:var(--alert)}
+.tag.live{color:var(--https);border-color:var(--edge-hi)}
 
 .br{right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));width:340px;padding:12px 14px}
 #log{list-style:none;margin:8px 0 0;padding:0;font-family:var(--f-mono);font-size:11px;line-height:1.75;min-height:calc(1.75em * 7)}
@@ -142,63 +151,72 @@ pre{margin:6px 0 0;font-family:var(--f-mono);font-size:10.5px;color:var(--https)
 @media (prefers-reduced-motion:reduce){ #log li{animation:none} #alert{animation:none} }
 </style>
 
-<canvas id="c" aria-label="网络流量三维星图"></canvas>
+<canvas id="c" aria-label="3D star map of network traffic"></canvas>
 <div id="labels"></div>
 
 <header class="hud tl">
   <h1>Vela</h1>
-  <p>分布式网络宇宙观测站<span class="tag">模拟数据</span></p>
-  <a class="sw" href="cyber.html">切换到赛博朋克风格 →</a>
+  <p>Network universe observatory<span class="tag" id="modeTag">Simulated</span></p>
+  <a class="sw" href="cyber.html">Switch to Cyberpunk style →</a>
 </header>
 
-<section class="hud tr" aria-label="总吞吐">
-  <div class="k">总吞吐</div>
+<section class="hud tr" aria-label="Total throughput">
+  <div class="k">Total throughput</div>
   <div class="big" id="total">0 B/s</div>
   <div class="dir"><span>↓ <b id="down">0</b></span><span>↑ <b id="up">0</b></span></div>
   <canvas id="spark"></canvas>
-  <div class="counts"><span><b id="nFlows">0</b>条航道活跃</span><span><b id="nNodes">0</b>颗恒星在线</span></div>
+  <div class="counts"><span><b id="nFlows">0</b>lanes active</span><span><b id="nNodes">0</b>stars online</span></div>
 </section>
 
-<aside class="hud bl" aria-label="控制台">
-  <div class="k">演练场景</div>
-  <div class="scen">
-    <button class="btn" id="s-download" data-s="download" aria-pressed="false"><span class="t">下载大文件</span><span class="d">Steam → 本机 · 62 MB/s</span></button>
-    <button class="btn" id="s-video" data-s="video" aria-pressed="false"><span class="t">4K 视频</span><span class="d">视频 CDN → 电视 · QUIC</span></button>
-    <button class="btn" id="s-dns" data-s="dnsstorm" aria-pressed="false"><span class="t">DNS 风暴</span><span class="d">全屋设备高频寻路</span></button>
-    <button class="btn danger" id="s-scan" data-s="scan" aria-pressed="false"><span class="t">端口扫描</span><span class="d">外部主机探测网关</span></button>
-    <button class="btn danger wide" id="s-nas" data-s="nasdown" aria-pressed="false"><span class="t">NAS 宕机</span><span class="d">超新星爆发 → 化为陨石</span></button>
+<aside class="hud bl" aria-label="Console">
+  <div class="k">Data source</div>
+  <form class="src" id="srcSim">
+    <input id="liveUrl" placeholder="Paste the ws:// address the backend printed" aria-label="Backend WebSocket address" autocomplete="off" spellcheck="false">
+    <button class="btn" type="submit"><span class="t">Connect</span></button>
+  </form>
+  <div class="src" id="srcLive" hidden>
+    <span id="liveState">—</span>
+    <button class="btn" type="button" id="liveLeave"><span class="t">Back to simulation</span></button>
   </div>
-  <div class="k">协议图谱 · 点击筛选</div>
+  <div class="k" id="scenK">Drills</div>
+  <div class="scen" id="scen">
+    <button class="btn" id="s-download" data-s="download" aria-pressed="false"><span class="t">Big download</span><span class="d">Steam → PC · 62 MB/s</span></button>
+    <button class="btn" id="s-video" data-s="video" aria-pressed="false"><span class="t">4K video</span><span class="d">CDN → TV · QUIC</span></button>
+    <button class="btn" id="s-dns" data-s="dnsstorm" aria-pressed="false"><span class="t">DNS storm</span><span class="d">All devices, rapid-fire</span></button>
+    <button class="btn danger" id="s-scan" data-s="scan" aria-pressed="false"><span class="t">Port scan</span><span class="d">Outsider → gateway</span></button>
+    <button class="btn danger wide" id="s-nas" data-s="nasdown" aria-pressed="false"><span class="t">NAS outage</span><span class="d">Supernova → meteorite</span></button>
+  </div>
+  <div class="k">Protocols · click to filter</div>
   <div class="legend" id="legend"></div>
   <div class="row">
-    <button class="btn" id="sound" aria-pressed="false"><span class="t">开启舰桥音效</span></button>
-    <button class="btn" id="home"><span class="t">返回全景</span></button>
+    <button class="btn" id="sound" aria-pressed="false"><span class="t">Bridge audio on</span></button>
+    <button class="btn" id="home"><span class="t">Overview</span></button>
   </div>
-  <div class="hint">拖拽旋转 · 滚轮缩放 · 点击恒星追踪</div>
+  <div class="hint">Drag to rotate · scroll to zoom · click a star</div>
 </aside>
 
-<section class="hud br" aria-label="流量事件">
-  <div class="k">航道日志</div>
+<section class="hud br" aria-label="Traffic events">
+  <div class="k">Lane log</div>
   <ul id="log"></ul>
-  <details><summary>后端推送格式（最新一条）</summary><pre id="raw">{}</pre></details>
+  <details><summary>Backend message format (latest)</summary><pre id="raw">{}</pre></details>
 </section>
 
 <section class="hud" id="panel" hidden aria-live="polite">
-  <div class="k" id="pkind">恒星</div>
-  <h2><span id="pname">—</span><button class="x" id="pclose" aria-label="关闭">✕</button></h2>
-  <div class="ip"><span id="pip"></span> · <span class="state" id="pstate">在线</span></div>
+  <div class="k" id="pkind">Star</div>
+  <h2><span id="pname">—</span><button class="x" id="pclose" aria-label="Close">✕</button></h2>
+  <div class="ip"><span id="pip"></span> · <span class="state" id="pstate">Online</span></div>
   <div class="stat">
-    <div><span>进港 ↓</span><b id="pin">0</b></div>
-    <div><span>出港 ↑</span><b id="pout">0</b></div>
-    <div><span>相连航道</span><b id="plinks">0</b></div>
-    <div><span>累计流量</span><b id="ptot">0</b></div>
+    <div><span>Inbound ↓</span><b id="pin">0</b></div>
+    <div><span>Outbound ↑</span><b id="pout">0</b></div>
+    <div><span>Linked lanes</span><b id="plinks">0</b></div>
+    <div><span>Total transferred</span><b id="ptot">0</b></div>
   </div>
   <div id="pbar"></div>
   <div id="plist"></div>
   <canvas id="nspark"></canvas>
 </section>
 
-<div id="alert" hidden>⚠ 端口扫描 · <b id="aip">45.155.205.233</b> → 192.168.1.1 · 已探测 <b id="aports">0</b> 个端口</div>
+<div id="alert" hidden>⚠ Port scan · <b id="aip">45.155.205.233</b> → 192.168.1.1 · <b id="aports">0</b> ports probed</div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -208,10 +226,12 @@ pre{margin:6px 0 0;font-family:var(--f-mono);font-size:10.5px;color:var(--https)
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<script src="live.js"></script>
 <script>
 (() => {
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $ = id => document.getElementById(id);
+const LIVE = window.VelaLive && VelaLive.fromURL();  // opening with ?ws=&token= enters live mode
 
 /* ---------- protocol palette ---------- */
 const PROTO = {
@@ -219,8 +239,11 @@ const PROTO = {
   quic:{name:'QUIC',port:443,hex:'#ffb347'},
   http:{name:'HTTP',port:80,hex:'#eef3ff'},
   dns:{name:'DNS',port:53,hex:'#b26bff'},
-  alert:{name:'异常',port:0,hex:'#ff2a5f'},
+  other:{name:'Other',port:0,hex:'#8fa3c0'},
+  alert:{name:'Alert',port:0,hex:'#ff2a5f'},
 };
+// where an external node's name came from in live mode (see "Where node names come from" in docs/ARCHITECTURE.md)
+const SRC_TEXT = {dns:'name via DNS', sni:'name via TLS SNI', asn:'name via ASN'};
 const protoOn = {};
 for (const k in PROTO){ PROTO[k].color = new THREE.Color(PROTO[k].hex); protoOn[k] = true; }
 
@@ -233,26 +256,26 @@ const pick = a => a[(Math.random()*a.length)|0];
 
 /* ---------- nodes ---------- */
 const NODE_DEFS = [
-  {id:'router', name:'路由器', ip:'192.168.1.1', kind:'网关', size:2.2, hex:'#9fe9ff'},
-  {id:'pc', name:'本机', ip:'192.168.1.10', kind:'工作站', size:1.4, hex:'#2de2e6', lan:true},
-  {id:'nas', name:'NAS', ip:'192.168.1.20', kind:'存储', size:1.5, hex:'#7fd8ff', lan:true},
-  {id:'tv', name:'客厅电视', ip:'192.168.1.30', kind:'终端', size:1.1, hex:'#9ab8ff', lan:true},
-  {id:'phone', name:'手机', ip:'192.168.1.41', kind:'终端', size:0.9, hex:'#a9c4ff', lan:true},
-  {id:'laptop', name:'笔记本', ip:'192.168.1.42', kind:'终端', size:1.0, hex:'#a9c4ff', lan:true},
-  {id:'iot', name:'智能音箱', ip:'192.168.1.55', kind:'IoT', size:0.7, hex:'#c4b3ff', lan:true},
+  {id:'router', name:'Router', ip:'192.168.1.1', kind:'Gateway', size:2.2, hex:'#9fe9ff'},
+  {id:'pc', name:'This machine', ip:'192.168.1.10', kind:'Workstation', size:1.4, hex:'#2de2e6', lan:true},
+  {id:'nas', name:'NAS', ip:'192.168.1.20', kind:'Storage', size:1.5, hex:'#7fd8ff', lan:true},
+  {id:'tv', name:'Living-room TV', ip:'192.168.1.30', kind:'Endpoint', size:1.1, hex:'#9ab8ff', lan:true},
+  {id:'phone', name:'Phone', ip:'192.168.1.41', kind:'Endpoint', size:0.9, hex:'#a9c4ff', lan:true},
+  {id:'laptop', name:'Laptop', ip:'192.168.1.42', kind:'Endpoint', size:1.0, hex:'#a9c4ff', lan:true},
+  {id:'iot', name:'Smart speaker', ip:'192.168.1.55', kind:'IoT', size:0.7, hex:'#c4b3ff', lan:true},
   {id:'gh', name:'GitHub', ip:'140.82.112.3', kind:'AS36459', size:1.5, hex:'#e6edf7'},
   {id:'cf', name:'Cloudflare', ip:'104.16.132.229', kind:'AS13335 · CDN', size:1.6, hex:'#ffc58a'},
   {id:'g', name:'Google', ip:'142.250.199.78', kind:'AS15169', size:1.7, hex:'#9fe0ff'},
-  {id:'yt', name:'视频 CDN', ip:'172.217.24.14', kind:'AS15169 · 流媒体', size:1.6, hex:'#ffb38a'},
-  {id:'aws', name:'AWS 东京', ip:'54.239.98.12', kind:'AS16509 · 云服务', size:1.5, hex:'#ffd28a'},
-  {id:'ali', name:'阿里云', ip:'47.246.24.233', kind:'AS45102 · 云服务', size:1.4, hex:'#ffb47a'},
-  {id:'steam', name:'Steam 下载', ip:'23.52.74.17', kind:'AS32590 · CDN', size:1.5, hex:'#a4c8ff'},
+  {id:'yt', name:'Video CDN', ip:'172.217.24.14', kind:'AS15169 · streaming', size:1.6, hex:'#ffb38a'},
+  {id:'aws', name:'AWS Tokyo', ip:'54.239.98.12', kind:'AS16509 · cloud', size:1.5, hex:'#ffd28a'},
+  {id:'ali', name:'Alibaba Cloud', ip:'47.246.24.233', kind:'AS45102 · cloud', size:1.4, hex:'#ffb47a'},
+  {id:'steam', name:'Steam downloads', ip:'23.52.74.17', kind:'AS32590 · CDN', size:1.5, hex:'#a4c8ff'},
   {id:'ms', name:'Microsoft', ip:'20.190.151.70', kind:'AS8075', size:1.5, hex:'#a9f0d0'},
-  {id:'bili', name:'哔哩哔哩', ip:'119.3.70.188', kind:'AS55990 · 视频', size:1.3, hex:'#ff9fd0'},
-  {id:'vps', name:'我的 VPS', ip:'203.0.113.24', kind:'云服务器 · 备份目标', size:1.3, hex:'#c8ffb0'},
-  {id:'dns1', name:'1.1.1.1', ip:'1.1.1.1', kind:'DNS 解析器', size:1.0, hex:'#c79bff'},
-  {id:'dns2', name:'8.8.8.8', ip:'8.8.8.8', kind:'DNS 解析器', size:1.0, hex:'#c79bff'},
-  {id:'scanner', name:'未知主机', ip:'45.155.205.233', kind:'可疑 · 无反向解析', size:1.1, hex:'#ff2a5f', hidden:true},
+  {id:'bili', name:'Bilibili', ip:'119.3.70.188', kind:'AS55990 · video', size:1.3, hex:'#ff9fd0'},
+  {id:'vps', name:'My VPS', ip:'203.0.113.24', kind:'Cloud server · backup target', size:1.3, hex:'#c8ffb0'},
+  {id:'dns1', name:'1.1.1.1', ip:'1.1.1.1', kind:'DNS resolver', size:1.0, hex:'#c79bff'},
+  {id:'dns2', name:'8.8.8.8', ip:'8.8.8.8', kind:'DNS resolver', size:1.0, hex:'#c79bff'},
+  {id:'scanner', name:'Unknown host', ip:'45.155.205.233', kind:'Suspicious · no reverse DNS', size:1.1, hex:'#ff2a5f', hidden:true},
 ];
 const NODES = [], N = {};
 
@@ -334,13 +357,14 @@ const lanIds = NODE_DEFS.filter(d=>d.lan).map(d=>d.id);
 const coreGeo = new THREE.SphereGeometry(1, 28, 18);
 const hitGeo = new THREE.SphereGeometry(1, 10, 8);
 const hits = [];
-NODE_DEFS.forEach(d => {
+function makeNode(d){
   const n = Object.assign({}, d);
   n.color = new THREE.Color(d.hex); n.baseColor = n.color.clone();
   n.online = !d.hidden; n.visible = !d.hidden;
   n.inRate = 0; n.outRate = 0; n._in = 0; n._out = 0; n.total = 0; n.pulse = 0; n.alert = 0; n.pb = {}; n.hist = []; n.links = 0;
   n.phase = Math.random()*6.28;
-  if (d.id === 'router') n.pos = new THREE.Vector3(0,0,0);
+  if (d.pos) n.pos = d.pos.clone();
+  else if (d.id === 'router') n.pos = new THREE.Vector3(0,0,0);
   else if (d.lan){
     const i = lanIds.indexOf(d.id), a = i/lanIds.length*Math.PI*2 + .3;
     n.pos = new THREE.Vector3(Math.cos(a)*18, Math.sin(i*1.7)*1.6, Math.sin(a)*18);
@@ -357,7 +381,7 @@ NODE_DEFS.forEach(d => {
   n.glow = new THREE.Sprite(new THREE.SpriteMaterial({map:GLOW, color:n.color.clone(), blending:THREE.AdditiveBlending, transparent:true, depthWrite:false, opacity:.9}));
   n.glow.position.copy(n.pos); n.glow.scale.setScalar(n.size*6);
   const hit = new THREE.Mesh(hitGeo, new THREE.MeshBasicMaterial({transparent:true, opacity:0, depthWrite:false}));
-  hit.position.copy(n.pos); hit.scale.setScalar(Math.max(2.5, n.size*2.6)); hit.userData.node = n;
+  hit.position.copy(n.pos); hit.scale.setScalar(Math.max(2.5, n.size*2.6)); hit.userData.node = n; n.hit = hit;
   scene.add(n.core, n.glow, hit); hits.push(hit);
   n.core.visible = n.glow.visible = n.visible;
   // label
@@ -369,7 +393,26 @@ NODE_DEFS.forEach(d => {
   $('labels').appendChild(el); n.el = el; n.rEl = el.querySelector('.r');
   el.hidden = !n.visible;
   NODES.push(n); N[n.id] = n;
-});
+  return n;
+}
+// live mode keeps only the gateway; every other node is created from backend messages
+NODE_DEFS.forEach(d => { if (!LIVE || d.id === 'router') makeNode(d); });
+function removeNode(n){
+  scene.remove(n.core, n.glow, n.hit);
+  n.core.material.dispose(); n.glow.material.dispose(); n.hit.material.dispose();
+  hits.splice(hits.indexOf(n.hit), 1);
+  n.el.remove();
+  NODES.splice(NODES.indexOf(n), 1); delete N[n.id];
+  for (let i=segList.length-1; i>=0; i--){
+    const s = segList[i];
+    if (s.p0 !== n.pos && s.p2 !== n.pos) continue;
+    scene.remove(s.line); s.line.geometry.dispose(); s.line.material.dispose();
+    if (s.tube){ scene.remove(s.tube); s.tube.geometry.dispose(); s.tube.material.dispose(); }
+    delete segs[s.key]; segList.splice(i, 1);
+  }
+  for (const [id,f] of flows) if (f.nodes.includes(n)) flows.delete(id);
+  if (focus === n) goHome();
+}
 /* gateway rings */
 const ringA = new THREE.Mesh(new THREE.TorusGeometry(3.4,.04,8,120), new THREE.MeshBasicMaterial({color:0x2de2e6, transparent:true, opacity:.7}));
 const ringB = ringA.clone(); ringB.material = ringA.material.clone(); ringB.scale.setScalar(1.35); ringB.material.opacity = .35;
@@ -547,19 +590,19 @@ function setScenario(key, on){
     if (on){
       addFlow({path:['pc','router','steam'], proto:'https', down:62e6, up:420e3, tag:'download'});
       addFlow({path:['pc','router','gh'], proto:'https', down:7.5e6, up:90e3, tag:'download'});
-      note('本机开始从 Steam 拉取 48.3 GB 游戏更新');
+      note('This machine started pulling a 48.3 GB game update from Steam');
     } else dropTag('download');
   }
   if (key === 'video'){
-    if (on){ addFlow({path:['tv','router','yt'], proto:'quic', port:443, down:3.3e6, up:60e3, tag:'video'}); note('客厅电视开始播放 4K HDR 视频'); }
+    if (on){ addFlow({path:['tv','router','yt'], proto:'quic', port:443, down:3.3e6, up:60e3, tag:'video'}); note('Living-room TV started playing 4K HDR video'); }
     else dropTag('video');
   }
-  if (key === 'dnsstorm' && on) note('DNS 查询速率突增，疑似应用重试风暴');
+  if (key === 'dnsstorm' && on) note('DNS query rate spiked; looks like an app retry storm');
   if (key === 'scan'){
     const s = N.scanner;
     s.online = s.visible = on; s.core.visible = s.glow.visible = on; s.el.hidden = !on;
     $('alert').hidden = !on;
-    if (on){ scanPorts = 0; supernova(s.pos, PROTO.alert.color, .6); note('检测到外部主机 45.155.205.233 对网关进行端口扫描', 'alert'); }
+    if (on){ scanPorts = 0; supernova(s.pos, PROTO.alert.color, .6); note('External host 45.155.205.233 is port-scanning the gateway', 'alert'); }
   }
   if (key === 'nasdown') setOnline(N.nas, !on);
 }
@@ -583,11 +626,11 @@ function setOnline(n, on){
   n.online = on;
   if (!on){
     supernova(n.pos, new THREE.Color('#ffffff'), 1.4);
-    note(`${n.name} (${n.ip}) 失去响应 · 心跳超时`, 'alert');
+    note(`${n.name} (${n.ip}) stopped responding · heartbeat timeout`, 'alert');
     for (const [id,f] of flows) if (f.nodes.includes(n)) flows.delete(id);
   } else {
     supernova(n.pos, n.baseColor, .8);
-    note(`${n.name} 重新上线 · 恢复同步`);
+    note(`${n.name} is back online · resynced`);
   }
   n.el.classList.toggle('off', !on);
   updatePanel(true);
@@ -597,7 +640,7 @@ function setOnline(n, on){
 let totUp = 0, totDown = 0, totalHist = [];
 function simTick(){
   const dt = .2;
-  persistent(); background(); scenarios();
+  if (live) live.tick(); else { persistent(); background(); scenarios(); }
   for (const n of NODES){ n._in = 0; n._out = 0; n._links = new Set(); }
   for (const s of segList){ s._load = 0; s._pb = {}; }
   let up = 0, down = 0;
@@ -643,7 +686,7 @@ setInterval(() => {
   $('nNodes').textContent = NODES.filter(n => n.online).length;
   for (const n of NODES){
     const r = n.inRate + n.outRate;
-    n.rEl.textContent = !n.online ? (n.visible ? '离线' : '') : r > 8e3 ? fmt(r) : '';
+    n.rEl.textContent = !n.online ? (n.visible ? 'offline' : '') : r > 8e3 ? fmt(r) : '';
     n.el.classList.toggle('alert', n.alert > .3);
   }
   updatePanel();
@@ -712,14 +755,15 @@ addEventListener('keydown', e => { if (e.key === 'Escape') goHome(); });
 function updatePanel(force){
   if (!focus || $('panel').hidden) return;
   const n = focus;
-  $('pname').textContent = n.name; $('pkind').textContent = n.kind; $('pip').textContent = n.ip;
-  const st = $('pstate'); st.textContent = n.online ? '在线' : '离线 · 陨石'; st.classList.toggle('off', !n.online);
+  $('pname').textContent = n.name; $('pkind').textContent = n.kind;
+  $('pip').textContent = n.ip + (n.src ? ' · ' + SRC_TEXT[n.src] : '');
+  const st = $('pstate'); st.textContent = n.online ? 'Online' : 'Offline · meteorite'; st.classList.toggle('off', !n.online);
   $('pin').textContent = fmt(n.inRate); $('pout').textContent = fmt(n.outRate);
   $('plinks').textContent = n.links; $('ptot').textContent = fmtB(n.total);
   const sum = Object.values(n.pb).reduce((a,b)=>a+b, 0) || 1;
   const keys = Object.keys(PROTO).filter(k => (n.pb[k]||0)/sum > .005);
   $('pbar').innerHTML = keys.map(k => `<span style="width:${(n.pb[k]/sum*100).toFixed(1)}%;background:${PROTO[k].hex}"></span>`).join('');
-  $('plist').innerHTML = keys.map(k => `<span><i style="background:${PROTO[k].hex}"></i>${PROTO[k].name} ${(n.pb[k]/sum*100).toFixed(0)}%</span>`).join('') || '<span>暂无流量</span>';
+  $('plist').innerHTML = keys.map(k => `<span><i style="background:${PROTO[k].hex}"></i>${PROTO[k].name} ${(n.pb[k]/sum*100).toFixed(0)}%</span>`).join('') || '<span>No traffic yet</span>';
 }
 
 /* picking */
@@ -769,7 +813,7 @@ $('sound').addEventListener('click', () => {
   else if (audio.on){ audio.on = false; audio.ctx.suspend(); }
   else { audio.on = true; audio.ctx.resume(); }
   const on = !!audio && audio.on;
-  b.setAttribute('aria-pressed', on); b.querySelector('.t').textContent = on ? '关闭舰桥音效' : '开启舰桥音效';
+  b.setAttribute('aria-pressed', on); b.querySelector('.t').textContent = on ? 'Bridge audio off' : 'Bridge audio on';
 });
 
 /* ---------- resize ---------- */
@@ -899,9 +943,84 @@ function frame(){
   requestAnimationFrame(frame);
 }
 
+/* ---------- data source: simulated or live backend ---------- */
+const LAN_SLOTS = 11, EXT_SLOTS = 48;
+const EXT_HEX = ['#e6edf7','#ffc58a','#9fe0ff','#ffb38a','#ffd28a','#a9f0d0','#ff9fd0','#c8ffb0','#a4c8ff'];
+const KIND_TEXT = {local:'This machine', gateway:'Gateway', lan:'LAN device', multicast:'Multicast · broadcast', external:'Internet'};
+function slotPos(group, slot){
+  if (group === 'local') return new THREE.Vector3(Math.cos(.3)*18, 0, Math.sin(.3)*18);
+  if (group === 'multicast') return new THREE.Vector3(0, -14, 0);
+  if (group === 'lan'){
+    const a = (slot+1)/(LAN_SLOTS+1)*Math.PI*2 + .3;
+    return new THREE.Vector3(Math.cos(a)*18, Math.sin(slot*1.7)*1.6, Math.sin(a)*18);
+  }
+  // internet: the same golden-angle spherical shell as simulated mode
+  const y = 1 - (slot+.5)/EXT_SLOTS*2, rr = Math.sqrt(1-y*y), th = slot*2.39996 + .8, R = 62 + (slot%3)*9;
+  return new THREE.Vector3(Math.cos(th)*rr*R, y*R*.42 + 4, Math.sin(th)*rr*R);
+}
+let liveSeq = 0;
+const live = LIVE ? VelaLive.attach(LIVE, {
+  lanSlots: LAN_SLOTS, extSlots: EXT_SLOTS,
+  createNode(d){
+    const {group, slot} = d;
+    if (group === 'gateway'){ this.renameNode(N.router, d); return N.router; }
+    const ext = group === 'external';
+    const n = makeNode({id:'live'+(++liveSeq), name:d.name, ip:d.ip, pos:slotPos(group, slot), kind:KIND_TEXT[group],
+      size: group === 'local' ? 1.4 : ext ? 1.3 : 1, lan: group === 'local' || group === 'lan',
+      hex: group === 'local' ? '#2de2e6' : group === 'multicast' ? '#c79bff' : ext ? EXT_HEX[slot % EXT_HEX.length] : '#9ab8ff'});
+    this.renameNode(n, d);
+    supernova(n.pos, n.baseColor, .35);
+    return n;
+  },
+  renameNode(n, {name, ip, source, asn, org}){
+    n.name = name; if (ip) n.ip = ip; n.src = source;
+    if (asn) n.kind = `Internet · ${asn}` + (org ? ` · ${org}` : '');
+    n.el.querySelector('.n').textContent = name;
+    if (focus === n) updatePanel(true);
+  },
+  removeNode,
+  addFlow({path, proto, port, up, down}){
+    const f = addFlow({path:path.map(n => n.id), proto, port, up, down, jitter:false, log:true});
+    if (f) this.updateFlow(f, up, down, true);
+    return f;
+  },
+  updateFlow(f, up, down, fresh){
+    if (!f) return;
+    f.up = f.baseUp = up; f.down = f.baseDown = down;
+    // small flows (DNS, heartbeats) are below the continuous-emission threshold, so emit one particle per window with data
+    if (fresh && (f.proto === 'dns' || up < 300) && up > 0) spawnHead(f, false);
+    if (fresh && (f.proto === 'dns' || down < 300) && down > 0) spawnHead(f, true);
+  },
+  removeFlow(f){ if (f) flows.delete(f.id); },
+  status(state, text){
+    const st = $('liveState');
+    st.textContent = text; st.title = text;
+    st.className = state === 'open' ? 'open' : state === 'connecting' ? '' : 'bad';
+    $('modeTag').textContent = state === 'open' ? 'Live' : 'Live · disconnected';
+    note(text, state === 'open' || state === 'connecting' ? '' : 'alert');
+  },
+}) : null;
+
+if (LIVE){
+  N.router.name = 'Gateway'; N.router.ip = 'waiting for backend'; N.router.kind = 'Gateway';
+  N.router.el.querySelector('.n').textContent = 'Gateway';
+  $('modeTag').classList.add('live');
+  $('srcSim').hidden = true; $('srcLive').hidden = false;
+  $('scenK').hidden = true; $('scen').hidden = true;
+  $('liveLeave').addEventListener('click', VelaLive.leave);
+} else {
+  $('liveUrl').value = VelaLive ? VelaLive.saved() : '';
+  $('srcSim').addEventListener('submit', e => {
+    e.preventDefault();
+    const cfg = VelaLive && VelaLive.parseWs($('liveUrl').value);
+    if (cfg) VelaLive.enter(cfg);
+    else note('Expected an address like ws://IP:PORT/?token=… (printed by the backend on startup)', 'alert');
+  });
+}
+
 /* warm up so the first frame already has traffic */
-for (let i=0;i<10;i++) simTick();
-note('观测站上线 · 正在接收模拟流量');
+if (!LIVE) for (let i=0;i<10;i++) simTick();
+note(LIVE ? 'Observatory online · live data mode' : 'Observatory online · receiving simulated traffic');
 requestAnimationFrame(frame);
 })();
 </script>

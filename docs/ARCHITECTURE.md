@@ -1,64 +1,64 @@
-# 架构
+# Architecture
 
 ```
-┌────────────── 数据源 ──────────────┐
-│ 本机抓包 │ 网关 conntrack │ Suricata eve.json │ Zeek logs │
-└─────┬─────────────┬──────────────┬───────────────┘
-      └──────── 适配器（统一成 flow 事件）────────┐
-                                                  ▼
-                          聚合器（每 200ms 一个窗口）
-                          + 节点治理（DNS 映射 / ASN 合并 / 生命周期）
-                                                  │
-                                ┌─────────────────┴──────────────┐
-                                ▼                                ▼
-                         检测引擎（D1–D6）                 设备探活（ping / ARP）
-                                └─────────────┬──────────────────┘
-                                              ▼
-                          WebSocket（仅局域网 + token）
-                                              ▼
-                          前端：Three.js 星图（保留模拟数据模式）
+┌──────────────────────── Data sources ────────────────────────┐
+│ Local capture │ Gateway conntrack │ Suricata eve.json │ Zeek logs │
+└───────┬───────────────┬──────────────────┬───────────────────┘
+        └──── Adapters (normalize into flow events) ────┐
+                                                        ▼
+                         Aggregator (one window every 200 ms)
+                         + node management (DNS mapping / ASN merging / lifecycle)
+                                                        │
+                                  ┌─────────────────────┴──────────────┐
+                                  ▼                                    ▼
+                       Detection engine (D1–D6)            Device liveness (ping / ARP)
+                                  └─────────────────┬──────────────────┘
+                                                    ▼
+                               WebSocket (LAN only + token)
+                                                    ▼
+                    Frontend: Three.js star map (simulated mode always kept)
 ```
 
-## 技术选型（暂定）
+## Technology choices (tentative)
 
-| 层 | 原型 | 正式版 |
+| Layer | Prototype | Production |
 |---|---|---|
-| 采集 | Python + Scapy | Go（gopacket）/ conntrack / eBPF |
-| 聚合与检测 | Python | Go |
-| 传输 | WebSocket | WebSocket |
-| 前端 | Three.js 单文件 | Three.js + Vite 模块化 |
+| Capture | Python + Scapy | Go (gopacket) / conntrack / eBPF |
+| Aggregation & detection | Python | Go |
+| Transport | WebSocket | WebSocket |
+| Frontend | Three.js single file | Three.js + Vite modules |
 
-## 数据采集位置
+## Where data is captured
 
-> 当前前端原型的流量全部来自内置模拟器，尚未读取任何真实网络数据。
+> The current backend captures on this machine's network interface. The frontend runs on its built-in simulator unless opened in live mode (see [backend/README.md](../backend/README.md)).
 
-### 采集点演进
+### Capture point evolution
 
-| 阶段 | 采集点 | 能看到什么 | 看不到什么 |
+| Stage | Capture point | What it sees | What it can't see |
 |---|---|---|---|
-| **M1 起步** | 本机网卡（Mac 的 Wi-Fi 通常是 `en0`） | 进出本机的所有连接 | 其他设备的流量（交换网络和加密 Wi-Fi 下，网卡收不到别人的包） |
-| **推荐目标** | 网关（OpenWrt 软路由 / Linux 网关），读 conntrack 或抓包 | 全屋所有设备进出外网的流量 | 局域网设备之间的内部通信 |
-| **进阶** | 网管交换机端口镜像 | 包括局域网内部流量 | —— |
+| **M1 start** | This machine's interface (`en0` is usually Wi-Fi on a Mac) | Every connection in and out of this machine | Other devices' traffic (on switched networks and encrypted Wi-Fi, your interface never receives other hosts' packets) |
+| **Recommended target** | The gateway (OpenWrt soft router / Linux gateway), reading conntrack or capturing packets | Every device's traffic to and from the internet | Traffic between LAN devices |
+| **Advanced** | Managed switch port mirroring | Including LAN-internal traffic | — |
 
-本机阶段的星图里，只有"本机"一颗恒星连向外网，这是采集位置决定的，不是 bug。
+In local-capture mode, only "this machine" has lanes to the internet. That's a consequence of where we capture, not a bug.
 
-### 只采元数据，不采内容
+### Metadata only, never content
 
-采集的字段：源/目的 IP、端口、协议、包大小、时间戳，以及 DNS 查询的域名。
-**不解析、不保存载荷（payload）。** 主流流量走 HTTPS / QUIC 加密，本来也看不到内容；
-D1–D6 检测规则全部只依赖元数据，这也是业界 NDR（网络检测与响应）产品的主流思路。
+Captured fields: source/destination IP, ports, protocol, packet size, timestamp, plus domain names from DNS answers and TLS SNI.
+**Payloads are never parsed or stored** (beyond the TLS handshake header that carries the SNI). Most traffic is HTTPS / QUIC and encrypted anyway;
+rules D1–D6 depend on metadata alone, which is the mainstream approach of commercial NDR (Network Detection and Response) products.
 
-### macOS 本机采集注意事项
+### Notes on capturing locally on macOS
 
-- **权限**：抓包要读 `/dev/bpf*`，默认需要 `sudo`。安装 Wireshark 时附带的 ChmodBPF 可让普通用户获得权限。
-- **VPN / 代理**：开着 Clash、Surge 等工具时，`en0` 上看到的大多是发往代理服务器的加密隧道，会显示成一条很粗的单一航道。想看到真实目标：
-  - 监听代理创建的虚拟网卡（`utun*`）；或
-  - 读取代理自身的连接日志 / API。
-- **不抓包的轻量方案**：用 `nettop` 或 `lsof -i` 读取本机连接表，开销小、无需解析包，还能拿到**发起连接的进程名**。这是网关视角拿不到的信息，可作为本机模式的特色（例如"哪个程序在偷偷回连"）。
+- **Permissions**: capturing means reading `/dev/bpf*`, which requires `sudo` by default. The ChmodBPF helper that ships with Wireshark grants access to regular users (via the `access_bpf` group).
+- **VPNs / proxies**: with Clash, Surge or similar running, most of what `en0` sees is an encrypted tunnel to the proxy server, drawn as one thick lane. To see the real destinations:
+  - capture on the virtual interface the proxy creates (`utun*`); or
+  - read the proxy's own connection log / API.
+- **A lightweight option without packet capture**: read the connection table with `nettop` or `lsof -i`. It's cheap, needs no packet parsing, and also gives the **name of the process that opened each connection**. A gateway can never see that, so it could become a signature feature of local mode (e.g. "which program is quietly phoning home").
 
-## 消息格式（前端原型的模拟器已按 flow 格式输出，接入时补上 `type` 字段）
+## Message formats
 
-### flow：每个聚合窗口内的一条连接
+### flow: one connection within one aggregation window
 
 ```json
 {
@@ -75,29 +75,44 @@ D1–D6 检测规则全部只依赖元数据，这也是业界 NDR（网络检�
 }
 ```
 
-`proto` 取值：`https` / `quic` / `http` / `dns` / `other` / `alert`。按端口近似判断，非 53/80/443/8080 端口的流量为 `other`（前端接入时需要为它补一个配色）。
+`proto` is one of `https` / `quic` / `http` / `dns` / `other` / `alert`. It's guessed from the port, so it's approximate; traffic on ports other than 53/80/443/8080 is `other`.
 
-`l4` 为传输层（`tcp` / `udp`），`port` 为推测的服务端口。本机抓包模式下 `src` 总是本机一侧，`bytes_up` 是本机发出的字节数；两端都不是本机的广播/组播包保持原方向。
+`l4` is the transport layer (`tcp` / `udp`), and `port` is the inferred service port. In local-capture mode `src` is always this machine's side and `bytes_up` is what this machine sent; broadcast/multicast packets where neither end is this machine keep their original direction.
 
-### node：节点信息与状态
+### node: node info and state
 
 ```json
 {
   "type": "node",
   "ip": "140.82.112.3",
-  "name": "GitHub",
+  "name": "github.com",
+  "name_source": "sni",
   "asn": "AS36459",
+  "org": "GITHUB",
   "kind": "external",
   "online": true
 }
 ```
 
-`kind` 取值：`local`（本机）/ `gateway`（默认网关）/ `lan`（私有地址）/ `multicast`（组播、广播）/ `external`。外网节点的 `name` 来自抓到的 DNS 响应，没有时为 `null`；`asn` 留到 M3 节点治理时填充。新连接先收到全部已知节点，之后只推送新增或改名的节点。
+`kind` is one of `local` (this machine) / `gateway` (default gateway) / `lan` (private address) / `multicast` (multicast and broadcast) / `external`. `asn` and `org` are only filled in for external nodes, and are `null` when the lookup finds nothing. A new client first receives every known node, then only new or renamed ones.
 
-### alert：见 [DETECTIONS.md](DETECTIONS.md#告警消息格式)
+### Where node names come from
 
-## 安全注意
+Packets carry IP addresses, not domain names. An external node's `name` is taken from three sources in order of reliability, and `name_source` says which one was used:
 
-- WebSocket 服务只绑定局域网地址，连接时校验 token。
-- 不持久化 payload，只保留元数据。
-- 采集程序以最小权限运行（Linux 上可用 `CAP_NET_RAW` 代替 root）。
+| `name_source` | Source | When it's unavailable |
+|---|---|---|
+| `dns` | Captured DNS answers: queried domain → returned IP (passive DNS) | OS/browser DNS cache hits; long-lived connections opened before the backend started; encrypted DNS (DoH / DoT) |
+| `sni` | The plaintext server name in the TLS ClientHello, reassembled when it spans several TCP segments | Connections opened before startup; ECH (Encrypted ClientHello); QUIC (the SNI sits in the encrypted Initial packet, not parsed yet) |
+| `asn` | Offline ASN database: the BGP autonomous system and organization owning the IP (iptoasn.com data, stored in `backend/data/`, refreshed every 30 days) | Private addresses; cloud IPs only resolve to the cloud provider (a site hosted on AWS shows as AMAZON) |
+| `null` | None of the above; only the IP is shown | — |
+
+Priority is `dns > sni > asn`: a more reliable source can replace a less reliable one, never the other way round. One IP can serve many domains (CDNs), so a name means "the name this device used to reach this IP", not the IP's one true name. Reverse DNS (PTR) is mostly empty or an internal hosting name, so it isn't used.
+
+### alert: see [DETECTIONS.md](DETECTIONS.md#alert-message-format)
+
+## Security notes
+
+- The WebSocket server only binds to LAN or loopback addresses and checks a token on connect.
+- Payloads are never persisted; only metadata is kept.
+- The capture process runs with least privilege (on Linux, `CAP_NET_RAW` instead of root).

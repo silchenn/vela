@@ -1,4 +1,4 @@
-"""调试客户端：python -m vela.watch 'ws://HOST:PORT/?token=...'，逐行打印收到的消息。"""
+"""Debug client: python -m vela.watch 'ws://HOST:PORT/?token=...' prints every message it receives, one per line."""
 
 import asyncio
 import sys
@@ -14,7 +14,7 @@ async def watch(url: str) -> None:
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        sys.exit("用法：python -m vela.watch 'ws://HOST:PORT/?token=...'")
+        sys.exit("usage: python -m vela.watch 'ws://HOST:PORT/?token=...'")
     try:
         asyncio.run(watch(sys.argv[1]))
     except KeyboardInterrupt:

@@ -1,1 +1,1 @@
-"""数据源适配器：把各自的原始数据转换成 vela.events 里的统一事件。"""
+"""Data-source adapters: each converts its own raw data into the unified events in vela.events."""

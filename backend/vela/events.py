@@ -1,16 +1,17 @@
-"""适配器输出的统一事件。每个数据源（抓包、conntrack、Suricata……）都转换成这里的类型。"""
+"""The unified event adapters emit. Every data source (capture, conntrack, Suricata, …) converts into these types."""
 
 from dataclasses import dataclass
 
 
 @dataclass(slots=True, frozen=True)
 class PacketEvent:
-    ts: float  # 秒（epoch）
+    ts: float  # seconds since the epoch
     src: str
     dst: str
     l4: str  # "tcp" | "udp"
     sport: int
     dport: int
-    size: int  # IP 层长度（字节），不含载荷内容
-    tcp_flags: str = ""  # 例如 "S"、"SA"、"R"；留给 D1 端口扫描检测
-    dns_answers: tuple[tuple[str, str], ...] = ()  # DNS 响应里的 (ip, 查询的域名)
+    size: int  # IP-layer length in bytes; payload content is never kept
+    tcp_flags: str = ""  # e.g. "S", "SA", "R"; reserved for D1 port-scan detection
+    dns_answers: tuple[tuple[str, str], ...] = ()  # (ip, queried domain) pairs from a DNS answer
+    sni: str = ""  # server name from a TLS ClientHello (belongs to dst)

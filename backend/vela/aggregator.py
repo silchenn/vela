@@ -1,16 +1,20 @@
-"""把逐包事件按窗口聚合成 flow 消息，并维护节点表（node 消息）。
+"""Aggregates per-packet events into per-window flow messages and maintains the node table (node messages).
 
-消息格式见 docs/ARCHITECTURE.md。
+Message formats are documented in docs/ARCHITECTURE.md.
 """
 
 import ipaddress
 from collections import defaultdict
+from collections.abc import Callable
 
+from .asn import short_org
 from .events import PacketEvent
 
-# 按端口判断协议只是近似（见 ROADMAP），用于配色足够
+# Inferring the protocol from the port is only approximate (see ROADMAP), but good enough for colors
 KNOWN_PORTS = {53, 80, 443, 8080}
-MAX_DNS_NAMES = 10_000
+MAX_NAMES = 10_000
+# How reliable each naming source is: DNS (the domain actually queried) > SNI (domain in the TLS handshake) > ASN (owning organization)
+NAME_PRIORITY = {"asn": 1, "sni": 2, "dns": 3}
 
 
 def classify(l4: str, port: int) -> str:
@@ -24,7 +28,7 @@ def classify(l4: str, port: int) -> str:
 
 
 def service_port(local_port: int, remote_port: int) -> int:
-    """猜测哪一端是服务端口：优先已知端口，其次 <1024 的一端，否则取对端端口。"""
+    """Guess which side is the service port: a well-known port first, then the side below 1024, else the peer's port."""
     for port, other in ((remote_port, local_port), (local_port, remote_port)):
         if port in KNOWN_PORTS or (port < 1024 <= other):
             return port
@@ -32,21 +36,33 @@ def service_port(local_port: int, remote_port: int) -> int:
 
 
 class Aggregator:
-    def __init__(self, local_ips: set[str], gateway: str | None = None, window_ms: int = 200):
+    def __init__(
+        self,
+        local_ips: set[str],
+        gateway: str | None = None,
+        window_ms: int = 200,
+        asn_lookup: Callable[[str], tuple[int, str] | None] | None = None,
+    ):
         self.local_ips = local_ips
         self.gateway = gateway
         self.window_ms = window_ms
+        self.asn_lookup = asn_lookup
         # (src, dst, l4, port) -> [bytes_up, bytes_down]
         self._flows: dict[tuple[str, str, str, int], list[int]] = defaultdict(lambda: [0, 0])
         self._nodes: dict[str, dict] = {}
         self._dirty_nodes: dict[str, dict] = {}
-        self._dns_names: dict[str, str] = {}
+        self._names: dict[str, tuple[str, str]] = {}  # ip -> (name, source); only names learned from DNS / SNI
+        # Traffic may not cross the gateway right away; add it up front so the frontend shows its address as soon as it connects
+        if gateway:
+            self._touch_node(gateway)
 
     def add(self, ev: PacketEvent) -> None:
         for ip, name in ev.dns_answers:
-            self._learn_name(ip, name)
+            self._learn_name(ip, name, "dns")
+        if ev.sni:
+            self._learn_name(ev.dst, ev.sni, "sni")
 
-        # 统一以本机一侧为 src；两端都不是本机（局域网广播/组播）时保持原方向
+        # Always make this machine's side the src; keep the original direction when neither end is local (LAN broadcast/multicast)
         if ev.dst in self.local_ips and ev.src not in self.local_ips:
             local, remote, lport, rport, upstream = ev.dst, ev.src, ev.dport, ev.sport, False
         else:
@@ -59,7 +75,7 @@ class Aggregator:
         self._touch_node(remote)
 
     def flush(self, ts_ms: int) -> list[dict]:
-        """取出本窗口的消息：先发新增/变更的节点，再发 flow。"""
+        """Drain this window's messages: new/changed nodes first, then flows."""
         msgs = list(self._dirty_nodes.values())
         self._dirty_nodes.clear()
         for (src, dst, l4, port), (up, down) in self._flows.items():
@@ -79,25 +95,42 @@ class Aggregator:
         return msgs
 
     def nodes(self) -> list[dict]:
-        """当前节点快照，新客户端连上时先发一遍。"""
+        """Snapshot of current nodes, sent first to each new client."""
         return list(self._nodes.values())
 
-    def _learn_name(self, ip: str, name: str) -> None:
-        self._dns_names.pop(ip, None)
-        self._dns_names[ip] = name
-        if len(self._dns_names) > MAX_DNS_NAMES:
-            del self._dns_names[next(iter(self._dns_names))]
+    def _learn_name(self, ip: str, name: str, source: str) -> None:
+        # Only a more reliable source may replace a name; a newer name from the same source wins (CDN IPs switch domains)
+        old = self._names.get(ip)
+        if old and NAME_PRIORITY[old[1]] > NAME_PRIORITY[source]:
+            return
+        self._names.pop(ip, None)
+        self._names[ip] = (name, source)
+        if len(self._names) > MAX_NAMES:
+            del self._names[next(iter(self._names))]
         node = self._nodes.get(ip)
-        if node and node["kind"] == "external" and node["name"] != name:
-            node["name"] = name
-            self._dirty_nodes[ip] = node
+        if node and node["kind"] == "external" and (node["name"], node["name_source"]) != (name, source):
+            if NAME_PRIORITY.get(node["name_source"], 0) <= NAME_PRIORITY[source]:
+                node["name"], node["name_source"] = name, source
+                self._dirty_nodes[ip] = node
 
     def _touch_node(self, ip: str) -> None:
         if ip in self._nodes:
             return
         kind = self._kind(ip)
-        name = {"local": "本机", "gateway": "网关"}.get(kind) or self._dns_names.get(ip)
-        node = {"type": "node", "ip": ip, "name": name, "asn": None, "kind": kind, "online": True}
+        name, source = self._names.get(ip, (None, None))
+        asn = org = None
+        if kind == "external" and self.asn_lookup:
+            found = self.asn_lookup(ip)
+            if found:
+                asn, org = f"AS{found[0]}", found[1]
+                if name is None:
+                    name, source = short_org(org), "asn"
+        if kind in ("local", "gateway"):
+            name, source = {"local": "This machine", "gateway": "Gateway"}[kind], None
+        node = {
+            "type": "node", "ip": ip, "name": name, "name_source": source,
+            "asn": asn, "org": org, "kind": kind, "online": True,
+        }
         self._nodes[ip] = node
         self._dirty_nodes[ip] = node
 

@@ -1,7 +1,7 @@
 [project]
 name = "vela-backend"
 version = "0.1.0"
-description = "Vela 数据采集与聚合：本机抓包 → flow 聚合 → WebSocket"
+description = "Vela capture and aggregation: local packet capture → flow aggregation → WebSocket"
 license = "MIT"
 requires-python = ">=3.11"
 dependencies = [
