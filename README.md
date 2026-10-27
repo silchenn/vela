@@ -13,7 +13,7 @@
 
 **Live demo**: <https://silchenn.github.io/vela/> (setup in [docs/DEPLOY.md](docs/DEPLOY.md))
 
-The frontend currently comes in two visual styles; the final one hasn't been picked yet. Switch between them from the top-left corner of either page:
+The frontend currently comes in two visual styles. Switch between them from the top-left corner of either page:
 
 | Style | File | Online |
 |---|---|---|
